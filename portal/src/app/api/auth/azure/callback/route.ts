@@ -1,3 +1,4 @@
+import { publicUrl } from '@/lib/server/publicUrl';
 import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeAuthorizationCode, validateIdToken } from '@/lib/server/azureAd';
@@ -16,7 +17,7 @@ function same(value: string, expected: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const returnUrl = new URL('/phdplacement/auth', request.url);
+  const returnUrl = publicUrl(request, '/phdplacement/auth');
   const fail = (reason: string) => NextResponse.redirect(new URL(`?error=${encodeURIComponent(reason)}`, returnUrl));
   const error = request.nextUrl.searchParams.get('error');
   const code = request.nextUrl.searchParams.get('code');
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
       maxAge: 30 * 24 * 60 * 60,
     };
 
-    const response = NextResponse.redirect(new URL('/phdplacement/dashboard', request.url));
+    const response = NextResponse.redirect(publicUrl(request, '/phdplacement/dashboard'));
 
     // 1. Server-side session cookie (tamper-proof HMAC)
     response.cookies.set(createSessionCookie({

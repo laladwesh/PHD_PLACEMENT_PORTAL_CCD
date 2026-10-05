@@ -1,3 +1,4 @@
+import { publicUrl } from '@/lib/server/publicUrl';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { clearSessionCookie } from '@/lib/server/session';
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       return res;
     }
 
-    const response = NextResponse.redirect(new URL('/phdplacement/auth', request.url), { status: 303 });
+    const response = NextResponse.redirect(publicUrl(request, '/phdplacement/auth'), { status: 303 });
     response.cookies.set(clearSessionCookie());
     return response;
   } catch (error: any) {

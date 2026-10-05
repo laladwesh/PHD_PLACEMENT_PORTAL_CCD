@@ -1,3 +1,4 @@
+import { publicUrl } from '@/lib/server/publicUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Student from '@/lib/server/models/Student';
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
     maxAge: 30 * 24 * 60 * 60,
   };
 
-  const response = NextResponse.redirect(new URL('/phdplacement/dashboard', request.url));
+  const response = NextResponse.redirect(publicUrl(request, '/phdplacement/dashboard'));
 
   // 1. HMAC-signed server session cookie
   response.cookies.set(createSessionCookie({

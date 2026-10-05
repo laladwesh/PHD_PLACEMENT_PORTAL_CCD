@@ -1,3 +1,4 @@
+import { publicUrl } from '@/lib/server/publicUrl';
 import { NextResponse } from 'next/server';
 import { authorizationUrl, createPkcePair, randomValue } from '@/lib/server/azureAd';
 
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
     console.error('Unable to start Azure sign-in:', error);
     const message = error?.message || 'Unable to start Azure sign-in.';
     return NextResponse.redirect(
-      new URL(`/phdplacement/auth?error=${encodeURIComponent(message)}`, request.url)
+      publicUrl(request, `/phdplacement/auth?error=${encodeURIComponent(message)}`)
     );
   }
 }
