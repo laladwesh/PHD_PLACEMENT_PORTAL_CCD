@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #1B2A4A;
+  --navy-light: #2D3F5E;
+  --bg-main: #F0F4F8;
+  --bg-card: #FFFFFF;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: #1a1a1a;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Rich text editor content */
+.rich-editor [contenteditable] {
+  min-height: 120px;
+  outline: none;
+  padding: 12px;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease-in-out;
+}
+
+/* Remove transition from specific elements */
+input, textarea, select, button {
+  transition-property: background-color, border-color, box-shadow, color, opacity;
+}

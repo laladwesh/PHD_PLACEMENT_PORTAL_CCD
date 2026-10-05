@@ -1,0 +1,22 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: phdplacement:latest
+    container_name: phdplacement-app
+    restart: unless-stopped
+    network_mode: host         
+    env_file:
+      - .env              
+    environment:
+      NODE_ENV: production
+      PORT: 7002               
+      HOSTNAME: 0.0.0.0
+      UPLOAD_ROOT: /app/uploads
+      MONGODB_URI: mongodb://127.0.0.1:27017/phd_placement   # overrides .env
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  uploads_data:

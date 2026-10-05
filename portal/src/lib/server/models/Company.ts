@@ -1,0 +1,87 @@
+import mongoose, { Document, Model, Schema } from 'mongoose';
+
+export interface IQuery {
+  subject?: string;
+  query: string;
+  date: Date;
+  student?: mongoose.Types.ObjectId;
+  company?: mongoose.Types.ObjectId;
+}
+
+const querySchema = new Schema<IQuery>(
+  {
+    subject: { type: String, required: false },
+    query: { type: String, required: true },
+    date: { type: Date, default: Date.now },
+    student: { type: Schema.Types.ObjectId, ref: 'student' },
+    company: { type: Schema.Types.ObjectId, ref: 'Company', required: false },
+  },
+  { timestamps: true }
+);
+
+export interface ICompany extends Document {
+  company_name: string;
+  email: string;
+  password?: string;
+  company_desc?: string;
+  company_desc_path?: string;
+  postal_address?: string;
+  website_url: string;
+  office_contact?: string;
+  organization_type?: string;
+  industry_sec?: string;
+  first_point: {
+    email?: string;
+    full_name?: string;
+    alt_email?: string;
+    contact?: string;
+  };
+  second_point: {
+    email?: string;
+    full_name?: string;
+    alt_email?: string;
+    contact?: string;
+  };
+  token?: string;
+  seckey?: string;
+  queries: IQuery[];
+}
+
+const companySchema = new Schema<ICompany>(
+  {
+    company_name: { type: String, required: true, unique: true },
+    email: { type: String, required: true },
+    password: { type: String, required: true },
+    company_desc: { type: String, default: '' },
+    company_desc_path: { type: String, default: '' },
+    postal_address: { type: String, required: false },
+    website_url: { type: String, required: true },
+    office_contact: { type: String, required: false },
+    organization_type: { type: String, required: false },
+    industry_sec: { type: String, required: false },
+    first_point: {
+      email: { type: String, required: false },
+      full_name: { type: String, required: false },
+      alt_email: { type: String, default: '' },
+      contact: { type: String, required: false },
+    },
+    second_point: {
+      email: { type: String, required: false },
+      full_name: { type: String, required: false },
+      alt_email: { type: String, default: '' },
+      contact: { type: String, required: false },
+    },
+    token: { type: String, required: false },
+    seckey: { type: String, required: false },
+    queries: {
+      type: [querySchema],
+      default: [],
+    },
+  },
+  { timestamps: true }
+);
+
+const Company: Model<ICompany> =
+  mongoose.models.Company || mongoose.model<ICompany>('Company', companySchema);
+
+export default Company;
