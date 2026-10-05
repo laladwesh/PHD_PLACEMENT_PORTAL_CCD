@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
+import { Jobs } from '@/models';
 import Student from '@/lib/server/models/Student';
 import { getPortalIdentity } from '@/lib/server/identity';
 import { getOrCreateStudent } from '@/lib/server/studentRepository';
@@ -57,13 +58,28 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const note = body.note || '';
 
     await connectToDatabase();
+    if (!mongoose.isValidObjectId(id)) {
+      return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
+    }
+    const openJob = await Job.findById(id).select('status applicationDeadline').lean();
+    if (!openJob || openJob.status !== 'Approved') {
+      return NextResponse.json({ error: 'This job is not open for applications.' }, { status: 404 });
+    }
+    if (openJob.applicationDeadline && new Date(openJob.applicationDeadline).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'The application deadline for this job has passed.' }, { status: 400 });
+    }
+    if (!['tech', 'non_tech', 'core'].includes(cvType)) {
+      return NextResponse.json({ error: 'Choose a valid CV type.' }, { status: 400 });
+    }
+
     let student: any = null;
     if (identity.rollNumber) {
       student = await getOrCreateStudent(identity);
     }
 
     if (student) {
-      if (student.status === 'Blocked') {
+      // Placed_Intern is set when the coordinator approves an offer (one-offer rule).
+      if (student.status === 'Blocked' || student.status === 'Placed_Intern') {
         return NextResponse.json(
           { error: 'Your placement portal access is restricted because you have already accepted an offer.' },
           { status: 403 }
@@ -86,14 +102,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       });
       await student.save();
 
-      // If job exists in Mongo, add student to job.selectedStudents or job.cvs
-      if (mongoose.isValidObjectId(id)) {
-        await Job.findByIdAndUpdate(id, {
-          $addToSet: {
-            selectedStudents: student._id,
-          },
-        });
-      }
+      // selectedStudents drives the applicant counts on the dashboards; cvs is what the
+      // applicants, final-selection and offer routes read. Keep both in step.
+      await Job.findByIdAndUpdate(id, { $addToSet: { selectedStudents: student._id } });
+      await Jobs.updateOne(
+        { _id: id, 'cvs.student': { $ne: student._id } },
+        { $push: { cvs: { student: student._id, type: cvType, status: 'none' } } },
+      );
     }
 
     return NextResponse.json({
@@ -103,10 +118,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     });
   } catch (error: any) {
     console.error('Error applying for job:', error);
-    return NextResponse.json(
-      { success: true, message: 'Application registered successfully in portal session.' },
-      { status: 200 }
-    );
+    return NextResponse.json({ error: 'Unable to submit your application. Please try again.' }, { status: 500 });
   }
 }
 
@@ -128,9 +140,8 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
       await student.save();
 
       if (mongoose.isValidObjectId(id)) {
-        await Job.findByIdAndUpdate(id, {
-          $pull: { selectedStudents: student._id },
-        });
+        await Job.findByIdAndUpdate(id, { $pull: { selectedStudents: student._id } });
+        await Jobs.updateOne({ _id: id }, { $pull: { cvs: { student: student._id } } });
       }
     }
 
@@ -141,6 +152,6 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     });
   } catch (error) {
     console.error('Error withdrawing application:', error);
-    return NextResponse.json({ success: true, message: 'Application withdrawn.' });
+    return NextResponse.json({ error: 'Unable to withdraw your application. Please try again.' }, { status: 500 });
   }
 }

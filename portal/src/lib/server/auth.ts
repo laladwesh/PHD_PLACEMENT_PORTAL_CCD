@@ -1,3 +1,4 @@
+import { jwtSecret } from '@/lib/server/secrets';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { connectToDatabase } from './mongodb';
@@ -10,7 +11,7 @@ export async function getUserFromToken() {
 
     if (token) {
       try {
-        const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'secret-fallback');
+        const decoded: any = jwt.verify(token, jwtSecret());
         if (decoded?.role === 'coordinator' || decoded?.role === 'student') {
           return {
             role: decoded.role,

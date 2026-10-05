@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
+import { sessionSecret } from './secrets';
 import type { UserRole } from '@/lib/types';
 
 export const SESSION_COOKIE = 'portal_session';
@@ -13,21 +14,17 @@ export type PortalSession = {
   exp: number;
 };
 
-function secret() {
-  const value = process.env.PORTAL_SESSION_SECRET || 'portal-session-secret-fallback-key-32chars-min';
-  return value;
-}
 
 function encode(value: PortalSession) {
   const payload = Buffer.from(JSON.stringify(value)).toString('base64url');
-  const signature = createHmac('sha256', secret()).update(payload).digest('base64url');
+  const signature = createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
 
 function decode(value: string): PortalSession | null {
   const [payload, signature] = value.split('.');
   if (!payload || !signature) return null;
-  const expected = createHmac('sha256', secret()).update(payload).digest('base64url');
+  const expected = createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
   const supplied = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
   if (supplied.length !== expectedBuffer.length || !timingSafeEqual(supplied, expectedBuffer)) return null;

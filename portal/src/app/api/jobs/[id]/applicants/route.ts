@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { Jobs } from '@/models';
+import { Jobs, Company } from '@/models';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -27,6 +27,12 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     if (jobCompanyId !== actor.companyId) {
       return NextResponse.json({ error: 'You do not have access to this job.' }, { status: 403 });
     }
+  }
+
+  // JAFs created through the multi-step form store the owner as companyId, not company.
+  let companyName = (job.company as any)?.company_name;
+  if (!companyName && (job as any).companyId) {
+    companyName = (await Company.findById((job as any).companyId).select('company_name').lean() as any)?.company_name;
   }
 
   const applicants = (job.cvs || []).map((application: any) => ({
@@ -55,7 +61,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     job: {
       id: String(job._id),
       designation: job.job_designation || (job as any).jobDesignation || 'Research Scientist',
-      company: (job.company as any)?.company_name || 'Organization',
+      company: companyName || 'Organization',
       placeOfPosting: job.place_of_posting || (job as any).placeOfPosting || 'N/A',
       numOpenings: job.num_openings || (job as any).numOpenings || 0,
       salary: job.salary,

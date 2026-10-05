@@ -2,20 +2,18 @@ import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
-import { getUserFromToken } from '@/lib/server/auth';
-import { getSession } from '@/lib/server/session';
+import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const actor = await requireRole('coordinator', 'company', 'student');
+  if (isAuthorizationError(actor)) return actor;
   try {
     const { id } = await params;
-    const session = await getSession();
-    const user = await getUserFromToken();
-
-    const role = session?.role || user?.role || 'coordinator';
-    const companyId = session?.companyId || user?.companyId;
+    const role = actor.role;
+    const companyId = actor.companyId;
 
     let job: any = null;
 
@@ -23,17 +21,16 @@ export async function GET(
       try {
         await connectToDatabase();
         let query: Record<string, any> = { _id: id };
-        if (role === 'company' && companyId) {
+        if (role === 'company') {
+          if (!companyId) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
           query.companyId = companyId;
         }
+        // Students only ever see approved JAFs.
+        if (role === 'student') query.status = 'Approved';
         job = await Job.findOne(query).populate('companyId', 'company_name email website_url');
       } catch (dbErr) {
         console.warn('DB error fetching job:', dbErr);
       }
-    }
-
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     if (!job) {

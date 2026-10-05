@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Discipline from '@/lib/server/models/Discipline';
+import { seedDisciplines } from '@/lib/server/seedDisciplines';
 
 export async function GET() {
   try {
     await connectToDatabase();
+    await seedDisciplines(); // no-op once the collection has data
     const disciplines = await Discipline.find({}).sort({ category: 1, name: 1 }).lean();
     return NextResponse.json({ data: disciplines });
   } catch (error) {

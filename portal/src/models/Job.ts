@@ -15,7 +15,7 @@ const cvSchema = new Schema(
     status: {
       type: String,
       enum: {
-        values: ['none', 'shortlist', 'waitlist', 'selected'],
+        values: ['none', 'shortlist', 'waitlist', 'selected', 'rejected'],
       },
       default: 'none',
     },

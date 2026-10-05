@@ -7,6 +7,7 @@ import PortalUser from '@/lib/server/models/PortalUser';
 import { createSessionCookie } from '@/lib/server/session';
 import type { UserRole } from '@/lib/types';
 import jwt from 'jsonwebtoken';
+import { jwtSecret } from '@/lib/server/secrets';
 
 type DevProfile = {
   role: UserRole;
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
   // 3. JWT token cookie
   const token = jwt.sign(
     { role: profile.role, email: profile.email, user: profile, companyId: profile.companyId },
-    process.env.JWT_SECRET || 'ccd_phd_placement_jwt_secret_dev_key_2026',
+    jwtSecret(),
     { expiresIn: '30d' }
   );
   response.cookies.set('token', token, { ...cookieOptions, httpOnly: true });

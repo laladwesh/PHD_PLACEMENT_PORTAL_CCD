@@ -1,30 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
-import { getUserFromToken } from '@/lib/server/auth';
-import { getSession } from '@/lib/server/session';
+import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; tabName: string }> }
 ) {
+  const actor = await requireRole('company', 'coordinator');
+  if (isAuthorizationError(actor)) return actor;
   try {
     await connectToDatabase();
-    const session = await getSession();
-    const user = await getUserFromToken();
-
-    const role = session?.role || user?.role || 'coordinator';
-    const companyId = session?.companyId || user?.companyId;
-
-    if (role !== 'company' && role !== 'coordinator') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const role = actor.role;
+    const companyId = actor.companyId;
 
     const { id, tabName } = await params;
     const body = await req.json();
 
     let query: Record<string, any> = { _id: id };
-    if (role === 'company' && companyId) {
+    if (role === 'company') {
+      if (!companyId) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
       query.companyId = companyId;
     }
 

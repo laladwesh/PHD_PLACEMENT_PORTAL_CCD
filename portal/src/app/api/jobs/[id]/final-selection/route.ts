@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { Jobs } from '@/models';
+import { Jobs, Student } from '@/models';
 import AuditEvent from '@/lib/server/models/AuditEvent';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
@@ -27,17 +27,18 @@ export async function POST(request: Request, { params }: RouteContext) {
   const ids = Array.isArray(body.student_ids) ? body.student_ids.map(String) : [];
   if (!ids.length || new Set(ids).size !== ids.length || ids.some((value) => !mongoose.isValidObjectId(value))) return NextResponse.json({ error: 'Provide unique valid applicant IDs.' }, { status: 400 });
   await connectToDatabase();
-  const job = await Jobs.findById(id).populate({ path: 'cvs.student', select: '_id email roll_number status' });
+  // Read lean and write with an atomic update: JAFs created through the multi-step form store some
+  // fields (e.g. eligibility) in a shape this schema cannot hydrate, so loading a full document throws.
+  const job = await Jobs.findById(id).select('cvs oa_round.final_selection').lean() as any;
   if (!job) return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
-  const applicants = new Map((job.cvs || []).map((item: any) => [String(item.student?._id), item.student]));
-  const selected = ids.map((studentId) => applicants.get(studentId));
-  if (selected.some((student) => !student)) return NextResponse.json({ error: 'Every selected student must be an applicant.' }, { status: 400 });
-  if (selected.some((student: any) => student.status === 'Blocked' || student.status === 'Placed_Intern')) return NextResponse.json({ error: 'Placed or blocked students cannot be selected.' }, { status: 409 });
-  const candidates = selected.map((student: any) => ({ student: student._id, email: student.email, roll_number: String(student.roll_number) }));
-  job.oa_round = job.oa_round || {};
-  job.oa_round.final_selection = { ...(job.oa_round.final_selection || {}), selected_candidates: candidates, uploaded_at: new Date(), uploaded_by: { role: 'coordinator', name: actor.name } };
-  job.markModified('oa_round.final_selection');
-  await job.save();
+  const applicantIds = new Set((job.cvs || []).map((item: any) => String(item.student)));
+  if (ids.some((studentId) => !applicantIds.has(studentId))) return NextResponse.json({ error: 'Every selected student must be an applicant.' }, { status: 400 });
+  const students = await Student.find({ _id: { $in: ids } }).select('_id email roll_number status').lean();
+  if (students.length !== ids.length) return NextResponse.json({ error: 'Every selected student must be an applicant.' }, { status: 400 });
+  if (students.some((student: any) => student.status === 'Blocked' || student.status === 'Placed_Intern')) return NextResponse.json({ error: 'Placed or blocked students cannot be selected.' }, { status: 409 });
+  const candidates = students.map((student: any) => ({ student: student._id, email: student.email, roll_number: String(student.roll_number) }));
+  const finalSelection = { ...(job.oa_round?.final_selection || {}), selected_candidates: candidates, uploaded_at: new Date(), uploaded_by: { role: 'coordinator', name: actor.name } };
+  await Jobs.updateOne({ _id: id }, { $set: { 'oa_round.final_selection': finalSelection } });
   await AuditEvent.create({ actor_email: actor.email, action: 'job.final_selection.submit', entity_type: 'job', entity_id: id, after: { student_ids: ids } });
-  return NextResponse.json({ success: true, count: candidates.length, final_selection: job.oa_round.final_selection });
+  return NextResponse.json({ success: true, count: candidates.length, final_selection: finalSelection });
 }

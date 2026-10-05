@@ -1,3 +1,4 @@
+import { jwtSecret } from '@/lib/server/secrets';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { connectToDatabase } from '@/lib/server/mongodb';
@@ -13,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'secret-fallback');
+    const decoded: any = jwt.verify(token, jwtSecret());
     
     if (!decoded || !decoded.companyId) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });

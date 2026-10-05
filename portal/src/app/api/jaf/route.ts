@@ -1,35 +1,24 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
-import Company from '@/lib/server/models/Company';
-import { getUserFromToken } from '@/lib/server/auth';
-import { getSession } from '@/lib/server/session';
+import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function GET() {
+  const actor = await requireRole('coordinator', 'company', 'student');
+  if (isAuthorizationError(actor)) return actor;
   try {
     await connectToDatabase();
-    const session = await getSession();
-    const userFromToken = await getUserFromToken();
-
-    const role = session?.role || userFromToken?.role || 'coordinator';
-    const companyId = session?.companyId || userFromToken?.companyId;
+    const role = actor.role;
+    const companyId = actor.companyId;
 
     let jobs: any[] = [];
     if (role === 'coordinator') {
       // Coordinator sees all jobs
       jobs = await Job.find({}).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
     } else if (role === 'company') {
-      if (companyId) {
-        jobs = await Job.find({ companyId }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
-      } else {
-        // Fallback for demo company
-        const defaultCompany = await Company.findOne({ email: 'recruiter@videotesting.com' });
-        if (defaultCompany) {
-          jobs = await Job.find({ companyId: defaultCompany._id }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
-        } else {
-          jobs = await Job.find({}).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
-        }
-      }
+      jobs = companyId
+        ? await Job.find({ companyId }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 })
+        : [];
     } else if (role === 'student') {
       // Student sees approved jobs
       jobs = await Job.find({ status: 'Approved' }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
@@ -57,35 +46,14 @@ export async function GET() {
 }
 
 export async function POST() {
+  const actor = await requireRole('company');
+  if (isAuthorizationError(actor)) return actor;
   try {
     await connectToDatabase();
-    const session = await getSession();
-    const userFromToken = await getUserFromToken();
-    const role = session?.role || userFromToken?.role;
-
-    if (role === 'coordinator') {
-      return NextResponse.json(
-        { error: 'Coordinators cannot create Job Application Forms. JAF creation is restricted to recruiting companies.' },
-        { status: 403 }
-      );
-    }
-
-    if (role === 'student') {
-      return NextResponse.json(
-        { error: 'Students cannot create Job Application Forms.' },
-        { status: 403 }
-      );
-    }
-
-    let companyId: any = session?.companyId || userFromToken?.companyId;
+    const companyId = actor.companyId;
 
     if (!companyId) {
-      const defaultComp = await Company.findOne({});
-      companyId = defaultComp?._id;
-    }
-
-    if (!companyId) {
-      return NextResponse.json({ error: 'No company account found for creating JAF.' }, { status: 400 });
+      return NextResponse.json({ error: 'Your recruiter account is not linked to a company.' }, { status: 403 });
     }
 
     const job = new Job({

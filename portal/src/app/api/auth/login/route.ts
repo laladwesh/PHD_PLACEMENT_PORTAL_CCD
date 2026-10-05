@@ -1,3 +1,4 @@
+import { jwtSecret } from '@/lib/server/secrets';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { connectToDatabase } from '@/lib/server/mongodb';
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
 
     const token = jwt.sign(
       { role: 'company', email: company.email, companyId: String(company._id), user: profile },
-      process.env.JWT_SECRET || 'secret-fallback',
+      jwtSecret(),
       { expiresIn: '30d' }
     );
 
@@ -127,7 +128,7 @@ export async function GET() {
     const token = cookieStore.get('token')?.value;
     if (token) {
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-fallback') as any;
+        const decoded = jwt.verify(token, jwtSecret()) as any;
         return NextResponse.json({
           activeRole: decoded.role,
           user: decoded.user,

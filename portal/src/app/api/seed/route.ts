@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { seedAllDatabaseData } from '@/lib/server/seedDatabase';
-import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function POST() {
+  // Seeding wipes students, companies, jobs, offers, users and announcements and loads demo data.
+  // It must never run against a production database, whoever is signed in.
   if (process.env.NODE_ENV === 'production') {
-    const actor = await requireRole('coordinator');
-    if (isAuthorizationError(actor)) return actor;
+    return NextResponse.json({ success: false, error: 'Seeding is disabled in production.' }, { status: 403 });
   }
   try {
     const counts = await seedAllDatabaseData();

@@ -1,3 +1,4 @@
+import { jwtSecret } from '@/lib/server/secrets';
 import { publicUrl } from '@/lib/server/publicUrl';
 import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
@@ -59,8 +60,13 @@ export async function GET(request: NextRequest) {
       let student = await Student.findOne({ email }).lean();
       if (!student) {
         // Auto-provision student so legitimate IITG scholars can access the registration steps
+        // The roll number can only be derived from emails that contain it. Never fall back to a
+        // shared placeholder: every such scholar would collide on the same unique roll number.
         const digitsMatch = email.match(/\d{7,9}/);
-        rollNumber = digitsMatch ? parseInt(digitsMatch[0], 10) : 216101001;
+        if (!digitsMatch) {
+          return fail('Your account is not in the student database yet. Please contact CCD to be added.');
+        }
+        rollNumber = parseInt(digitsMatch[0], 10);
         student = await Student.create({
           roll_number: rollNumber,
           name: name,
@@ -119,7 +125,7 @@ export async function GET(request: NextRequest) {
     // 4. JWT token cookie
     const token = jwt.sign(
       { role: profile.role, email: user.email, user: profile },
-      process.env.JWT_SECRET || 'secret-fallback',
+      jwtSecret(),
       { expiresIn: '30d' }
     );
     response.cookies.set('token', token, { ...cookieOptions, httpOnly: true });

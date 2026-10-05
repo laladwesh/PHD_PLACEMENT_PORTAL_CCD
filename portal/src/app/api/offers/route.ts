@@ -27,10 +27,12 @@ export async function POST(request: NextRequest) {
   const deadline = body.response_deadline ? new Date(String(body.response_deadline)) : null;
   if (!mongoose.isValidObjectId(jobId) || !mongoose.isValidObjectId(studentId) || !ctc || !deadline || Number.isNaN(deadline.getTime())) return NextResponse.json({ error: 'Job, student, CTC, and a valid response deadline are required.' }, { status: 400 });
   await connectToDatabase();
-  const job = await Jobs.findOne({ _id: jobId, company: actor.companyId, 'cvs.student': studentId }).populate('company', 'company_name').lean();
+  // companyId is not in the Jobs schema, so Mongoose will not cast it for us.
+  const companyObjectId = new mongoose.Types.ObjectId(actor.companyId);
+  const job: any = await Jobs.findOne({ _id: jobId, $or: [{ company: companyObjectId }, { companyId: companyObjectId }], 'cvs.student': studentId }).lean();
   if (!job) return NextResponse.json({ error: 'The selected student is not an applicant for your job.' }, { status: 403 });
   try {
-    const offer = await Offer.create({ job: jobId, company: actor.companyId, student: studentId, designation: job.job_designation, ctc, base_salary: typeof body.base_salary === 'string' ? body.base_salary.trim() : '', offered_at: body.offered_at ? new Date(String(body.offered_at)) : new Date(), response_deadline: deadline });
+    const offer = await Offer.create({ job: jobId, company: actor.companyId, student: studentId, designation: job.job_designation || job.jobDesignation || 'Role', ctc, base_salary: typeof body.base_salary === 'string' ? body.base_salary.trim() : '', offered_at: body.offered_at ? new Date(String(body.offered_at)) : new Date(), response_deadline: deadline });
     return NextResponse.json({ offer }, { status: 201 });
   } catch (error: any) {
     if (error?.code === 11000) return NextResponse.json({ error: 'An offer already exists for this student and job.' }, { status: 409 });

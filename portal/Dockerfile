@@ -26,6 +26,10 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
+# Uploads live on a volume. Creating the directory here (owned by the app user) makes Docker
+# initialise a new named volume with the same ownership; otherwise it is root-owned and uploads fail.
+RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
+
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
