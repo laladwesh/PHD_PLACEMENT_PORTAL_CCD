@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function POST(req: NextRequest) {
+  const actor = await requireRole('company', 'coordinator');
+  if (isAuthorizationError(actor)) return actor;
+
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;

@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import * as path from 'path';
 import * as fs from 'fs';
+import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
+  const actor = await requireRole('student', 'company', 'coordinator');
+  if (isAuthorizationError(actor)) return actor;
+
   try {
     const { filename } = await params;
     

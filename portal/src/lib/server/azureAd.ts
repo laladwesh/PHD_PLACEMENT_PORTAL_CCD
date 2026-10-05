@@ -42,6 +42,7 @@ export function authorizationUrl(state: string, nonce: string, challenge: string
     redirect_uri: redirectUri,
     response_mode: 'query',
     scope: 'openid profile email',
+    prompt: 'select_account', // always show the Microsoft account picker
     state,
     nonce,
     code_challenge: challenge,
