@@ -2,7 +2,7 @@ import { jwtSecret } from '@/lib/server/secrets';
 import { publicUrl } from '@/lib/server/publicUrl';
 import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeAuthorizationCode, validateIdToken } from '@/lib/server/azureAd';
+import { exchangeAuthorizationCode, iitgTenantId, validateIdToken } from '@/lib/server/azureAd';
 import { createSessionCookie } from '@/lib/server/session';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import PortalUser from '@/lib/server/models/PortalUser';
@@ -34,10 +34,20 @@ export async function GET(request: NextRequest) {
 
     // Official Microsoft ID token validation
     const claims = await validateIdToken(await exchangeAuthorizationCode(code, oauth.verifier), oauth.nonce);
-    const email = (claims.preferred_username || claims.email || '').trim().toLowerCase();
+    const isIitgAccount = (value: string) => value.endsWith('@iitg.ac.in');
+    // preferred_username is the sign-in name Microsoft verified. The `email` claim is only used as a
+    // fallback for IIT Guwahati accounts; it is never trusted for accounts from other domains.
+    const verifiedName = (claims.preferred_username || '').trim().toLowerCase();
+    const email = verifiedName || (claims.email || '').trim().toLowerCase();
     let name = claims.name || email.split('@')[0];
+    const iitg = isIitgAccount(email);
 
-    if (!email.endsWith('@iitg.ac.in')) return fail('Only official @iitg.ac.in Microsoft accounts are permitted.');
+    if (!email) return fail('Your Microsoft account did not return an email address.');
+    // @iitg.ac.in addresses are only valid when the token really comes from the IIT Guwahati tenant.
+    if (iitg && (claims.tid || '').toLowerCase() !== iitgTenantId()) {
+      return fail('Only official @iitg.ac.in Microsoft accounts are permitted.');
+    }
+    if (!iitg && !verifiedName) return fail('Your Microsoft account could not be verified.');
 
     await connectToDatabase();
     let user = await PortalUser.findOne({ email, active: true }).lean();
@@ -46,11 +56,22 @@ export async function GET(request: NextRequest) {
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
 
+
+    const isCoordinator =
+      user?.role === 'coordinator' ||
+      bootstrapCoordinators.includes(email) ||
+      (iitg && email.startsWith('placement'));
+
+    // Students must be IIT Guwahati accounts; any other domain needs a coordinator registration.
+    if (!iitg && !isCoordinator) {
+      return fail('Only official @iitg.ac.in Microsoft accounts are permitted. Coordinators with other addresses must be registered by CCD.');
+    }
+
     let role: 'coordinator' | 'student' = 'student';
     let rollNumber: number | null = null;
 
     // Determine if Coordinator or Student
-    if (user?.role === 'coordinator' || bootstrapCoordinators.includes(email) || email.startsWith('placement')) {
+    if (isCoordinator) {
       role = 'coordinator';
       if (!user) {
         user = await PortalUser.create({ email, name: name || 'Placement Coordinator', role: 'coordinator' });

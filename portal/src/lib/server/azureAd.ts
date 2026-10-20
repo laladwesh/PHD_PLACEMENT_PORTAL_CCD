@@ -7,6 +7,7 @@ export type AzureClaims = {
   preferred_username?: string;
   email?: string;
   nonce?: string;
+  tid?: string;
   aud?: string | string[];
   iss?: string;
   exp?: number;
@@ -23,6 +24,25 @@ export function azureConfig() {
   return { tenantId, clientId, clientSecret, redirectUri };
 }
 
+// Microsoft's fixed tenant id for personal accounts (outlook.com, hotmail.com, live.com, ...).
+const PERSONAL_ACCOUNT_TENANT = '9188040d-6c67-4c5b-b112-36a304b66dad';
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function authorityTenant() {
+  return process.env.AZURE_AD_AUTHORITY?.trim() || azureConfig().tenantId;
+}
+
+function allowedTenantIds() {
+  const { tenantId } = azureConfig();
+  if (GUID.test(authorityTenant())) return [authorityTenant().toLowerCase()];
+  const extra = (process.env.AZURE_EXTRA_TENANT_IDS || '').split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
+  return [tenantId.toLowerCase(), PERSONAL_ACCOUNT_TENANT, ...extra];
+}
+
+export function iitgTenantId() {
+  return azureConfig().tenantId.toLowerCase();
+}
+
 export function createPkcePair() {
   const verifier = randomBytes(48).toString('base64url');
   const challenge = createHash('sha256').update(verifier).digest('base64url');
@@ -34,8 +54,8 @@ export function randomValue() {
 }
 
 export function authorizationUrl(state: string, nonce: string, challenge: string) {
-  const { tenantId, clientId, redirectUri } = azureConfig();
-  const url = new URL(`${microsoftHost}/${tenantId}/oauth2/v2.0/authorize`);
+  const { clientId, redirectUri } = azureConfig();
+  const url = new URL(`${microsoftHost}/${authorityTenant()}/oauth2/v2.0/authorize`);
   url.search = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
@@ -52,8 +72,8 @@ export function authorizationUrl(state: string, nonce: string, challenge: string
 }
 
 export async function exchangeAuthorizationCode(code: string, verifier: string) {
-  const { tenantId, clientId, clientSecret, redirectUri } = azureConfig();
-  const response = await fetch(`${microsoftHost}/${tenantId}/oauth2/v2.0/token`, {
+  const { clientId, clientSecret, redirectUri } = azureConfig();
+  const response = await fetch(`${microsoftHost}/${authorityTenant()}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -72,12 +92,12 @@ export async function exchangeAuthorizationCode(code: string, verifier: string) 
 }
 
 export async function validateIdToken(idToken: string, expectedNonce: string): Promise<AzureClaims> {
-  const { tenantId, clientId } = azureConfig();
+  const { clientId } = azureConfig();
   const [headerValue, payloadValue, signatureValue] = idToken.split('.');
   if (!headerValue || !payloadValue || !signatureValue) throw new Error('Malformed Azure ID token.');
   const header = JSON.parse(Buffer.from(headerValue, 'base64url').toString('utf8')) as { alg?: string; kid?: string };
   if (header.alg !== 'RS256' || !header.kid) throw new Error('Unsupported Azure ID token signature.');
-  const keyResponse = await fetch(`${microsoftHost}/${tenantId}/discovery/v2.0/keys`, { cache: 'no-store' });
+  const keyResponse = await fetch(`${microsoftHost}/${authorityTenant()}/discovery/v2.0/keys`, { cache: 'no-store' });
   const keys = await keyResponse.json() as { keys?: Array<Record<string, any>> };
   const jwk = keys.keys?.find((key) => key.kid === header.kid);
   if (!jwk) throw new Error('Azure signing key was not found.');
@@ -88,6 +108,9 @@ export async function validateIdToken(idToken: string, expectedNonce: string): P
   if (!audienceMatches || claims.nonce !== expectedNonce || !claims.exp || claims.exp * 1000 <= Date.now()) {
     throw new Error('Azure ID token claims are invalid.');
   }
-  if (claims.iss !== `${microsoftHost}/${tenantId}/v2.0`) throw new Error('Azure ID token issuer is invalid.');
+  const tid = (claims.tid || '').toLowerCase();
+  if (!tid || !allowedTenantIds().includes(tid) || claims.iss !== `${microsoftHost}/${tid}/v2.0`) {
+    throw new Error('Azure ID token issuer is invalid.');
+  }
   return claims;
 }

@@ -38,3 +38,5 @@ phd_portal_recruiter_build_prompt.md
 ui_spec.md
 *.pdf
 *.tex
+
+*.mongosh.js
