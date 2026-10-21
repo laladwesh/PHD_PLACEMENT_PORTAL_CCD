@@ -5,7 +5,7 @@ import { Jobs } from '@/models';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 type RouteContext = { params: Promise<{ id: string }> };
-const editable = new Set(['job_designation', 'job_description', 'place_of_posting', 'num_openings', 'application_deadline', 'eligibility', 'eligible_programmes', 'salary', 'selection_process', 'bond', 'bond_details', 'additional']);
+const editable = new Set(['job_designation', 'job_description', 'place_of_posting', 'num_openings', 'eligibility', 'eligible_programmes', 'salary', 'selection_process', 'bond', 'bond_details', 'additional']);
 
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   const actor = await requireRole('coordinator', 'company');

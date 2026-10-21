@@ -68,7 +68,7 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                     month: 'short',
                     year: 'numeric',
                   })
-                : 'Oct 30, 2026',
+                : 'Not set',
               poc: {
                 name: 'Placement Operations',
                 role: 'CCD Placement Cell',
@@ -298,8 +298,8 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
             <span className="text-gray-700 truncate block">{jaf.placeOfPosting || 'Pan-India'}</span>
           </div>
           <div className="truncate">
-            <span className="text-[10px] uppercase font-semibold text-gray-400 block mb-0.5">Deadline</span>
-            <span className="text-gray-700 truncate block">{jaf.deadline || 'Oct 30, 2026'}</span>
+            <span className="text-[10px] uppercase font-semibold text-gray-400 block mb-0.5">Closing Date</span>
+            <span className="text-gray-700 truncate block">{jaf.deadline || 'Not set'}</span>
           </div>
           <div className="truncate">
             <span className="text-[10px] uppercase font-semibold text-gray-400 block mb-0.5">SPOC</span>

@@ -324,7 +324,13 @@ const jobSchema = new Schema(
       },
       default: "Incomplete",
     },
+    // Legacy closing-date field retained for compatibility with the original portal.
     application_deadline: {
+      type: Date,
+      required: false,
+    },
+    // Canonical closing date, selected by the coordinator at JAF approval.
+    applicationDeadline: {
       type: Date,
       required: false,
     },
@@ -369,10 +375,6 @@ const jobSchema = new Schema(
     },
     selection_process: {
       type: selectionSchema,
-    },
-    application_deadline: {
-      type: Date,
-      required: false,
     },
     job_description_file: {
       // pdf file

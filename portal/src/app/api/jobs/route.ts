@@ -8,7 +8,7 @@ const statuses = new Set(['Complete', 'Incomplete', 'Approved', 'Unapproved', 'C
 function jobDto(job: any) {
   const company = job.company && typeof job.company === 'object' ? job.company : null;
   return {
-    _id: String(job._id), status: job.status, application_deadline: job.application_deadline,
+    _id: String(job._id), status: job.status, applicationDeadline: job.applicationDeadline, application_deadline: job.application_deadline,
     job_designation: job.job_designation, job_description: job.job_description,
     place_of_posting: job.place_of_posting, num_openings: job.num_openings,
     bond: job.bond, bond_details: job.bond_details, eligibility: job.eligibility,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     const job = await Jobs.create({
       company: actor.companyId, job_designation: designation, job_description: description,
-      place_of_posting: place, num_openings: openings, application_deadline: body.application_deadline,
+      place_of_posting: place, num_openings: openings,
       eligibility: body.eligibility, eligible_programmes: body.eligible_programmes,
       salary: body.salary, selection_process: body.selection_process, bond: body.bond,
       bond_details: body.bond_details, additional: body.additional, status: 'Unapproved',

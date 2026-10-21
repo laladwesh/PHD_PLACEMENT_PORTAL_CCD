@@ -61,7 +61,7 @@ export default function JobsPage() {
             designation: j.jobDesignation || j.job_designation || 'Untitled Draft',
             status: j.status,
             createdAt: j.createdAt,
-            deadline: j.applicationDeadline ? new Date(j.applicationDeadline).toLocaleDateString() : 'TBD',
+            deadline: j.applicationDeadline ? new Date(j.applicationDeadline).toLocaleDateString() : 'Not set',
             registeredStudents: j.selectedStudents?.length || (j.cvs ? j.cvs.length : 0),
             description: j.jobDescription?.content || j.job_description || '',
             placeOfPosting: j.placeOfPosting || j.place_of_posting || '',
@@ -102,23 +102,28 @@ export default function JobsPage() {
     fetchJobs();
   }, [isCompany, isCoordinator, isStudent, profile.name]);
 
-  const handleApprove = async (id: number | string) => {
-    setJobs((prev) =>
-      prev.map((job) => (job.id === id ? { ...job, status: 'Approved' as JAFStatus, feedback: undefined } : job))
-    );
-    if (reviewJaf?.id === id) {
-      setReviewJaf((prev) => (prev ? { ...prev, status: 'Approved', feedback: undefined } : null));
-    }
-    toast.success(`Job Application #${id} approved successfully.`);
+  const handleApprove = async (id: number | string, applicationDeadline: string) => {
     try {
       const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve' }),
+        body: JSON.stringify({ action: 'approve', applicationDeadline }),
       });
-      if (!response.ok) throw new Error('Unable to approve this JAF.');
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast.error(payload.error || 'Unable to approve this JAF.');
+        return;
+      }
+      const closingDate = new Date(`${applicationDeadline}T23:59:59`).toLocaleDateString();
+      setJobs((prev) =>
+        prev.map((job) => (job.id === id ? { ...job, status: 'Approved' as JAFStatus, deadline: closingDate, feedback: undefined } : job))
+      );
+      if (reviewJaf?.id === id) {
+        setReviewJaf((prev) => (prev ? { ...prev, status: 'Approved', deadline: closingDate, feedback: undefined } : null));
+      }
+      toast.success(`Job Application #${id} approved successfully.`);
     } catch {
-      // Ignored
+      toast.error('Unable to approve this JAF.');
     }
   };
 
@@ -521,7 +526,7 @@ export default function JobsPage() {
                       <div className="flex items-center justify-end gap-2">
                         {isCoordinator && job.status === 'Unapproved' && (
                           <button
-                            onClick={() => handleApprove(job.id)}
+                            onClick={() => setReviewJaf(job)}
                             className="bg-[#1B2A4A] text-white text-xs px-2.5 py-1 rounded-md hover:bg-[#2D3F5E] transition-colors whitespace-nowrap font-medium cursor-pointer"
                           >
                             Approve
