@@ -130,7 +130,9 @@ const JobSchema = new Schema<IJob>(
     agreedToTerms: { type: Boolean, default: false },
     policyVersion: { type: String },
     finalSelectionFile: { type: String },
-    selectedStudents: [{ type: Schema.Types.ObjectId, ref: 'Student' }],
+    // The active Student model is registered as `student` (lowercase).
+    // Keeping this reference correct lets Mongoose populate company applicants.
+    selectedStudents: [{ type: Schema.Types.ObjectId, ref: 'student' }],
   },
   { timestamps: true }
 );

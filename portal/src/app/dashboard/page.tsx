@@ -95,7 +95,7 @@ export default function DashboardPage() {
               designation: j.jobDesignation || j.job_designation || 'Research Scientist',
               status: j.status,
               createdAt: j.createdAt,
-              deadline: j.applicationDeadline || j.deadline || '2026-10-25',
+              deadline: j.applicationDeadline ? new Date(j.applicationDeadline).toLocaleDateString() : 'Not set',
               registeredStudents: j.selectedStudents?.length || (j.cvs ? j.cvs.length : (j.registeredStudents || 0)),
               description: j.jobDescription?.content || j.job_description || '',
               placeOfPosting: j.placeOfPosting || j.place_of_posting || 'Pan-India',
@@ -167,21 +167,23 @@ export default function DashboardPage() {
     }
   }, [profile.name, profile.title, profile.email, isStudent]);
 
-  const handleApprove = async (id: number | string) => {
+  const handleApprove = async (id: number | string, applicationDeadline: string) => {
     const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'approve' }),
+      body: JSON.stringify({ action: 'approve', applicationDeadline }),
     });
     if (!response.ok) {
-      toast.error('Unable to approve this JAF.');
+      const payload = await response.json().catch(() => ({}));
+      toast.error(payload.error || 'Unable to approve this JAF.');
       return;
     }
+    const closingDate = new Date(`${applicationDeadline}T23:59:59`).toLocaleDateString();
     setJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: 'Approved' as JAFStatus, feedback: undefined } : j))
+      prev.map((j) => (j.id === id ? { ...j, status: 'Approved' as JAFStatus, deadline: closingDate, feedback: undefined } : j))
     );
     if (reviewJaf?.id === id) {
-      setReviewJaf((prev) => (prev ? { ...prev, status: 'Approved', feedback: undefined } : null));
+      setReviewJaf((prev) => (prev ? { ...prev, status: 'Approved', deadline: closingDate, feedback: undefined } : null));
     }
     toast.success(`Job Application #${id} approved successfully.`);
   };
@@ -450,7 +452,7 @@ export default function DashboardPage() {
                             <span className="text-gray-300">&bull;</span>
                             <span className="inline-flex items-center gap-1 text-amber-800 font-medium">
                               <ClockIcon className="w-3.5 h-3.5 text-amber-600" />
-                              Deadline: {job.deadline || '2026-10-25'}
+                              Closing date: {job.deadline || 'Not set'}
                             </span>
                           </div>
                         </div>
@@ -698,7 +700,6 @@ export default function DashboardPage() {
   const pendingCount = jobs.filter((j) => j.status === 'Unapproved' || j.status === 'Changes Requested').length;
   const approvedCount = jobs.filter((j) => j.status === 'Approved').length;
   const changesCount = jobs.filter((j) => j.status === 'Changes Requested').length;
-  const totalApplicants = jobs.reduce((acc, j) => acc + (j.registeredStudents || 0), 0);
 
   // Filtered jobs according to active tab and search query
   const filteredJobs = jobs.filter((j) => {
@@ -759,7 +760,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Overview Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 mb-6">
         {/* KPI 1: Total JAFs */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs">
           <div className="flex items-center justify-between">
@@ -805,20 +806,6 @@ export default function DashboardPage() {
           <p className="text-[11px] text-slate-500 mt-1">Visible to eligible scholars</p>
         </div>
 
-        {/* KPI 4: Total Applicants */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-500">Total Applicants</span>
-            <div className="w-7 h-7 rounded-md bg-blue-50 text-blue-700 flex items-center justify-center">
-              <UsersIcon className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-gray-900">{totalApplicants}</span>
-            <span className="text-[11px] text-gray-400">candidates</span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1">Registered across drives</p>
-        </div>
       </div>
 
       {/* Main Table Card */}
@@ -973,7 +960,7 @@ export default function DashboardPage() {
 
                           {isCoordinator && job.status === 'Unapproved' && (
                             <button
-                              onClick={() => handleApprove(job.id)}
+                              onClick={() => setReviewJaf(job)}
                               className="bg-emerald-700 text-white text-xs px-2.5 py-1 rounded-md hover:bg-emerald-800 transition-colors font-medium cursor-pointer shadow-2xs"
                             >
                               Approve

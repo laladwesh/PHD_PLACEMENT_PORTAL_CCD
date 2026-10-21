@@ -8,7 +8,7 @@ interface JAFReviewModalProps {
   jaf: DetailedJAF | null;
   isOpen: boolean;
   onClose: () => void;
-  onApprove: (id: number | string) => void;
+  onApprove: (id: number | string, applicationDeadline: string) => void;
   onRequestChanges: (id: number | string, feedback: string) => void;
   onReject: (id: number | string, reason: string) => void;
   onEdit?: (jaf: DetailedJAF) => void;
@@ -25,7 +25,8 @@ export function JAFReviewModal({
 }: JAFReviewModalProps) {
   const [feedbackText, setFeedbackText] = useState('');
   const [rejectReason, setRejectReason] = useState('');
-  const [actionView, setActionView] = useState<'main' | 'changes' | 'reject'>('main');
+  const [applicationDeadline, setApplicationDeadline] = useState('');
+  const [actionView, setActionView] = useState<'main' | 'approval' | 'changes' | 'reject'>('main');
 
   if (!isOpen || !jaf) return null;
 
@@ -41,6 +42,13 @@ export function JAFReviewModal({
     onReject(jaf.id, rejectReason);
     setActionView('main');
     setRejectReason('');
+  };
+
+  const handleApprove = () => {
+    if (!applicationDeadline) return;
+    onApprove(jaf.id, applicationDeadline);
+    setActionView('main');
+    setApplicationDeadline('');
   };
 
   return (
@@ -96,8 +104,8 @@ export function JAFReviewModal({
                 <span className="font-medium text-gray-800">{jaf.expectedRecruitments} Candidates</span>
               </div>
               <div>
-                <span className="text-gray-400 block">Deadline</span>
-                <span className="font-medium text-gray-800">{jaf.deadline}</span>
+                <span className="text-gray-400 block">Application Closing Date</span>
+                <span className="font-medium text-gray-800">{jaf.deadline || 'Not set'}</span>
               </div>
             </div>
           </div>
@@ -233,6 +241,39 @@ export function JAFReviewModal({
             </div>
           )}
 
+          {/* Action View: Approval closing-date form */}
+          {actionView === 'approval' && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded space-y-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-semibold text-gray-800 text-xs block">Set application closing date</span>
+                  <span className="text-[11px] text-gray-600">Students can apply only until this date. The company&apos;s date of joining is kept separate.</span>
+                </div>
+                <button onClick={() => setActionView('main')} className="text-xs text-gray-500 hover:text-gray-800">
+                  Cancel
+                </button>
+              </div>
+              <label className="block text-xs font-medium text-gray-700">
+                Application closing date
+                <input
+                  type="date"
+                  value={applicationDeadline}
+                  onChange={(event) => setApplicationDeadline(event.target.value)}
+                  min={new Date().toISOString().slice(0, 10)}
+                  required
+                  className="mt-1.5 block w-full max-w-xs text-sm p-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#1B2A4A] bg-white"
+                />
+              </label>
+              <button
+                onClick={handleApprove}
+                disabled={!applicationDeadline}
+                className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded transition-colors"
+              >
+                Approve &amp; Open Applications
+              </button>
+            </div>
+          )}
+
           {/* Action View: Reject Form */}
           {actionView === 'reject' && (
             <div className="p-4 bg-gray-50 border border-gray-300 rounded space-y-3">
@@ -282,7 +323,7 @@ export function JAFReviewModal({
               </button>
               <button
                 type="button"
-                onClick={() => onApprove(jaf.id)}
+                onClick={() => setActionView('approval')}
                 className="bg-[#1B2A4A] hover:bg-[#2D3F5E] text-white text-xs px-4 py-1.5 rounded font-medium transition-colors"
               >
                 Approve JAF

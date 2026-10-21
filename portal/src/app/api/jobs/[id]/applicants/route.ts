@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { Jobs, Company } from '@/models';
+import { connectToDatabase } from '@/lib/server/mongodb';
+import Job from '@/lib/server/models/Job';
+import Student from '@/lib/server/models/Student';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -9,64 +10,93 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const actor = await requireRole('coordinator', 'company');
   if (isAuthorizationError(actor)) return actor;
+
   const { id } = await params;
-  if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
+  if (!mongoose.isValidObjectId(id)) {
+    return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
+  }
+
   const search = new URL(request.url).searchParams.get('search')?.trim().toLowerCase();
   await connectToDatabase();
-  const job = await Jobs.findById(id)
+
+  // `selectedStudents` is the canonical application relationship for JAFs
+  // created through the multi-step form. Populate it explicitly with the
+  // registered lowercase model name; the older Job schema used a different
+  // legacy `cvs` structure and was the source of missing company applicants.
+  const job = await Job.findById(id)
+    .populate('companyId', 'company_name email')
     .populate({
-      path: 'cvs.student',
-      select: 'roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete research_area thesis_status placed_at',
+      path: 'selectedStudents',
+      model: 'student',
+      select: 'roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied',
     })
-    .populate('company', 'company_name email')
-    .lean();
+    .lean() as any;
+
   if (!job) return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
 
-  if (actor.role === 'company' && actor.companyId) {
-    const jobCompanyId = String((job.company as any)?._id || (job as any).companyId || job.company);
-    if (jobCompanyId !== actor.companyId) {
+  const jobCompanyId = String(job.companyId?._id || job.companyId || '');
+  if (actor.role === 'company') {
+    if (!actor.companyId || jobCompanyId !== actor.companyId) {
       return NextResponse.json({ error: 'You do not have access to this job.' }, { status: 403 });
     }
   }
 
-  // JAFs created through the multi-step form store the owner as companyId, not company.
-  let companyName = (job.company as any)?.company_name;
-  if (!companyName && (job as any).companyId) {
-    companyName = (await Company.findById((job as any).companyId).select('company_name').lean() as any)?.company_name;
+  // Student-side application records are included as a recovery path for
+  // applications saved before the selectedStudents link was introduced or if
+  // an earlier partial write left that array out of sync.
+  const studentsWithApplication = await Student.find({ 'jobs_applied.job': job._id })
+    .select('roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied')
+    .lean() as any[];
+
+  const applicantsById = new Map<string, any>();
+  for (const student of job.selectedStudents || []) {
+    if (student?._id) applicantsById.set(String(student._id), student);
+  }
+  for (const student of studentsWithApplication) {
+    applicantsById.set(String(student._id), student);
   }
 
-  const applicants = (job.cvs || []).map((application: any) => ({
-    application_status: application.status,
-    profile: application.type,
-    student: application.student ? {
-      id: String(application.student._id),
-      roll_number: application.student.roll_number,
-      name: application.student.name,
-      email: application.student.email,
-      cpi: application.student.major_cpi,
-      department: application.student.academic_details?.major_department || 'Computer Science and Engineering',
-      researchArea: application.student.research_area || application.student.academic_details?.major_discipline || 'Applied Machine Learning & Distributed Systems',
-      thesisStatus: application.student.thesis_status || 'Pre-Synopsis Complete',
-      status: application.student.status,
-      cv_verified: application.student.cv_verified,
-      cv_flagged: application.student.cv_flagged,
-      registration_complete: application.student.registration_complete,
-      placedAt: application.student.placed_at ? { company: application.student.placed_at } : undefined,
-    } : null,
-  })).filter((application: any) => application.student);
+  const applicants = [...applicantsById.values()].map((student) => {
+    const application = (student.jobs_applied || []).find(
+      (item: { job?: unknown }) => String(item.job) === String(job._id),
+    );
+    return {
+      application_status: application?.status || 'none',
+      cvSelection: application?.cv_selection || 'cv1',
+      profile: application?.profile || 'tech',
+      student: {
+        id: String(student._id),
+        roll_number: student.roll_number,
+        name: student.name,
+        email: student.email,
+        cpi: student.major_cpi,
+        department: student.academic_details?.major_department || student.academic_details?.major_discipline || 'Not recorded',
+        researchArea: student.academic_details?.major_discipline || 'Not recorded',
+        thesisStatus: 'In progress',
+        status: student.status,
+        cv_verified: student.cv_verified,
+        cv_flagged: student.cv_flagged,
+        registration_complete: student.registration_complete,
+      },
+    };
+  });
 
-  const filtered = search ? applicants.filter((item: any) => `${item.student.name} ${item.student.roll_number} ${item.student.department}`.toLowerCase().includes(search)) : applicants;
+  const filtered = search
+    ? applicants.filter((item) =>
+        `${item.student.name} ${item.student.roll_number} ${item.student.department}`.toLowerCase().includes(search),
+      )
+    : applicants;
 
   return NextResponse.json({
     job: {
       id: String(job._id),
-      designation: job.job_designation || (job as any).jobDesignation || 'Research Scientist',
-      company: companyName || 'Organization',
-      placeOfPosting: job.place_of_posting || (job as any).placeOfPosting || 'N/A',
-      numOpenings: job.num_openings || (job as any).numOpenings || 0,
+      designation: job.jobDesignation || 'Research Scientist',
+      company: job.companyId?.company_name || 'Organization',
+      placeOfPosting: job.placeOfPosting || 'N/A',
+      numOpenings: job.numOpenings || 0,
       salary: job.salary,
       status: job.status,
-      applicationDeadline: job.application_deadline || (job as any).applicationDeadline,
+      applicationDeadline: job.applicationDeadline,
     },
     count: filtered.length,
     applicants: filtered,

@@ -47,6 +47,7 @@ const academicDetailsSchema = new Schema({
 
 const jobApplicationSchema = new Schema({
   job: { type: Schema.Types.ObjectId, ref: 'jobs', required: true },
+  cv_selection: { type: String, enum: ['cv1', 'cv2', 'cv3'], default: 'cv1' },
   profile: { type: String, enum: ['tech', 'non_tech', 'core'] },
   status: { type: String, enum: ['none', 'shortlist', 'waitlist', 'selected', 'rejected'], default: 'none' },
   oa_status: { type: String, enum: ['not_updated', 'shortlisted', 'not_shortlisted'], default: 'not_updated' },

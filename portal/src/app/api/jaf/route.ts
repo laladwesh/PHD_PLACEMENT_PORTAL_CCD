@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
+import Student from '@/lib/server/models/Student';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
+import { isStudentInEligibleProgramme } from '@/lib/server/jafEligibility';
 
 export async function GET() {
   const actor = await requireRole('coordinator', 'company', 'student');
@@ -20,8 +22,24 @@ export async function GET() {
         ? await Job.find({ companyId }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 })
         : [];
     } else if (role === 'student') {
-      // Student sees approved jobs
-      jobs = await Job.find({ status: 'Approved' }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
+      // A student must see only approved JAFs that include their recorded
+      // programme/department. This is deliberately enforced server-side, not
+      // only by the Jobs-page filter.
+      if (!actor.rollNumber) {
+        return NextResponse.json({ jobs: [] });
+      }
+
+      const student = await Student.findOne({ roll_number: actor.rollNumber })
+        .select('academic_details')
+        .lean();
+      if (!student) {
+        return NextResponse.json({ jobs: [] });
+      }
+
+      const approvedJobs = await Job.find({ status: 'Approved', applicationDeadline: { $gt: new Date() } })
+        .populate('companyId', 'company_name email website_url')
+        .sort({ createdAt: -1 });
+      jobs = approvedJobs.filter((job) => isStudentInEligibleProgramme(job.toObject(), student));
     } else {
       jobs = await Job.find({ status: 'Approved' }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
     }

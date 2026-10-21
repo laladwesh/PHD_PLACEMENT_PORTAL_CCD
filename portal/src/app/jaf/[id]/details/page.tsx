@@ -33,10 +33,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
   // Student application state
   const [hasApplied, setHasApplied] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const [selectedCv, setSelectedCv] = useState('CV 1 (Default / Research Focused)');
-  const [selectedProfile, setSelectedProfile] = useState<'tech' | 'core' | 'non_tech'>('tech');
-  const [researchStatement, setResearchStatement] = useState('');
-  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [selectedCv, setSelectedCv] = useState<'cv1' | 'cv2' | 'cv3'>('cv1');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -75,22 +72,17 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
 
   const handleConfirmApplication = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agreedTerms) {
-      toast.error('Please accept the placement policy confirmation to proceed.');
-      return;
-    }
-
     setSubmitting(true);
     try {
-      await fetch(`/phdplacement/api/jobs/${id}/apply`, {
+      const response = await fetch(`/phdplacement/api/jobs/${id}/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cvType: selectedCv,
-          domain: selectedProfile,
-          note: researchStatement,
+          cvSelection: selectedCv,
         }),
       });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Unable to submit your application.');
 
       // Save locally
       try {
@@ -105,10 +97,8 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       setHasApplied(true);
       setShowApplyModal(false);
       toast.success(`Application submitted successfully for ${job?.jobDesignation || 'this position'}!`);
-    } catch {
-      setHasApplied(true);
-      setShowApplyModal(false);
-      toast.success(`Application submitted successfully!`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to submit your application.');
     } finally {
       setSubmitting(false);
     }
@@ -118,8 +108,13 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
     if (!confirm('Are you sure you want to withdraw your application for this drive?')) return;
 
     try {
-      await fetch(`/phdplacement/api/jobs/${id}/apply`, { method: 'DELETE' });
-    } catch {}
+      const response = await fetch(`/phdplacement/api/jobs/${id}/apply`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Unable to withdraw your application.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to withdraw your application.');
+      return;
+    }
 
     try {
       const stored = localStorage.getItem('applied_jaf_ids');
@@ -160,6 +155,10 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       </DashboardLayout>
     );
   }
+
+  const canWithdrawApplication = Boolean(
+    job.applicationDeadline && new Date(job.applicationDeadline).getTime() > Date.now(),
+  );
 
   const companyName = job.company || (job.companyId && typeof job.companyId === 'object' ? job.companyId.company_name : profile?.name || 'Recruiter');
 
@@ -242,8 +241,8 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="h-6 w-px bg-slate-200"></div>
             <div>
-              <span className="text-[10px] uppercase font-semibold text-gray-400 block">Deadline</span>
-              <span className="text-amber-800 font-medium">{job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Oct 30, 2026'}</span>
+                <span className="text-[10px] uppercase font-semibold text-gray-400 block">Closing Date</span>
+                <span className="text-amber-800 font-medium">{job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Not set'}</span>
             </div>
           </div>
         </div>
@@ -264,12 +263,14 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={handleWithdrawApplication}
-                  className="px-3.5 py-1.5 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-md hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer self-start sm:self-auto"
-                >
-                  Withdraw Application
-                </button>
+                {canWithdrawApplication && (
+                  <button
+                    onClick={handleWithdrawApplication}
+                    className="px-3.5 py-1.5 text-xs font-medium text-rose-700 bg-white border border-rose-200 rounded-md hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer self-start sm:self-auto"
+                  >
+                    Withdraw Application
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -282,7 +283,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                   <div>
                     <h3 className="font-bold text-sm text-gray-900">PhD Placement Drive — Open for Applications</h3>
                     <p className="text-xs text-gray-600 mt-0.5">
-                      Deadline: <strong className="text-amber-800">{job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Oct 30, 2026'}</strong> &bull; Expected Openings: <strong>{job.numOpenings || 5}</strong>
+                      Closing date: <strong className="text-amber-800">{job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Not set'}</strong> &bull; Expected Openings: <strong>{job.numOpenings || 5}</strong>
                     </p>
                   </div>
                 </div>
@@ -347,13 +348,13 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
               <div>
                 <p className="text-[11px] font-semibold uppercase text-gray-400 mb-1">Date of Joining</p>
                 <p className="font-medium text-sm text-gray-900">
-                  {job.dateOfJoining ? new Date(job.dateOfJoining).toLocaleDateString() : 'Immediate / Upon PhD Defense'}
+                  {job.dateOfJoining ? new Date(job.dateOfJoining).toLocaleDateString() : 'Not specified'}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase text-gray-400 mb-1">Application Deadline</p>
+                <p className="text-[11px] font-semibold uppercase text-gray-400 mb-1">Application Closing Date</p>
                 <p className="font-medium text-sm text-amber-800">
-                  {job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Oct 30, 2026'}
+                  {job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Not set'}
                 </p>
               </div>
               <div>
@@ -528,7 +529,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
               <div>
                 <p className="text-[11px] font-semibold uppercase text-gray-400 mb-1">Closing Date</p>
                 <p className="font-medium text-amber-800">
-                  {job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Oct 30, 2026'}
+                  {job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Not set'}
                 </p>
               </div>
               <div>
@@ -582,70 +583,19 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
               {/* CV Selection */}
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5">
-                  Select CV to Submit <span className="text-rose-600">*</span>
+                  Select CV <span className="text-rose-600">*</span>
                 </label>
                 <select
                   value={selectedCv}
-                  onChange={(e) => setSelectedCv(e.target.value)}
+                  onChange={(e) => setSelectedCv(e.target.value as 'cv1' | 'cv2' | 'cv3')}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#1B2A4A]"
                 >
-                  <option value="CV 1 (Default / Machine Learning & Systems)">CV 1 · Primary Research (ML & Systems)</option>
-                  <option value="CV 2 (Core Engineering & Architecture)">CV 2 · Core Engineering & Architectures</option>
-                  <option value="CV 3 (Industry & Applied R&D)">CV 3 · Industry & Applied R&D</option>
+                  <option value="cv1">CV1</option>
+                  <option value="cv2">CV2</option>
+                  <option value="cv3">CV3</option>
                 </select>
-                <p className="text-[11px] text-gray-400 mt-1">CV uploaded in Step 2 of registration will be attached.</p>
+                <p className="text-[11px] text-gray-400 mt-1">The selected CV will be attached to your application.</p>
               </div>
-
-              {/* Domain Profile */}
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1.5">
-                  Preferred Role Domain <span className="text-rose-600">*</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['tech', 'core', 'non_tech'] as const).map((dom) => (
-                    <button
-                      type="button"
-                      key={dom}
-                      onClick={() => setSelectedProfile(dom)}
-                      className={`py-1.5 px-2 rounded-md text-xs font-medium border text-center transition-colors cursor-pointer ${
-                        selectedProfile === dom
-                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {dom === 'tech' ? 'Technical (R&D)' : dom === 'core' ? 'Core Engineering' : 'Consulting / Other'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Research Focus Note */}
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1.5">
-                  Brief Thesis / Research Alignment (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={researchStatement}
-                  onChange={(e) => setResearchStatement(e.target.value)}
-                  placeholder="Summarize key publications, thesis defense status, or relevant research contributions..."
-                  className="w-full border border-gray-300 rounded-md p-2.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#1B2A4A] bg-white resize-none"
-                />
-              </div>
-
-              {/* Terms Checkbox */}
-              <label className="flex items-start gap-2 pt-1 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={agreedTerms}
-                  onChange={(e) => setAgreedTerms(e.target.checked)}
-                  className="w-4 h-4 text-[#1B2A4A] rounded focus:ring-[#1B2A4A] mt-0.5"
-                  required
-                />
-                <span className="text-[11px] text-gray-600 leading-snug">
-                  I confirm that my supervisor NOC is cleared, my registration is complete, and I agree to adhere to the IIT Guwahati placement policy.
-                </span>
-              </label>
 
               {/* Modal Footer */}
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
@@ -658,12 +608,8 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                 </button>
                 <button
                   type="submit"
-                  disabled={!agreedTerms || submitting}
-                  className={`px-4 py-1.5 text-xs font-semibold text-white rounded-md transition-colors shadow-2xs ${
-                    agreedTerms && !submitting
-                      ? 'bg-[#1B2A4A] hover:bg-[#2D3F5E] cursor-pointer'
-                      : 'bg-gray-400 cursor-not-allowed'
-                  }`}
+                  disabled={submitting}
+                  className="px-4 py-1.5 text-xs font-semibold text-white rounded-md transition-colors shadow-2xs bg-[#1B2A4A] hover:bg-[#2D3F5E] disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {submitting ? 'Submitting...' : 'Confirm & Submit Application'}
                 </button>

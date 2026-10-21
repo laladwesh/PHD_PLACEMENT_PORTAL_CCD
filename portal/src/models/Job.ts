@@ -312,6 +312,11 @@ const jobSchema = new Schema(
       type: Date,
       required: false,
     },
+    // Canonical field set by the coordinator when approving a JAF.
+    applicationDeadline: {
+      type: Date,
+      required: false,
+    },
     job_designation: {
       type: String,
     },

@@ -6,6 +6,7 @@ import { Jobs } from '@/models';
 import Student from '@/lib/server/models/Student';
 import { getPortalIdentity } from '@/lib/server/identity';
 import { getOrCreateStudent } from '@/lib/server/studentRepository';
+import { isStudentInEligibleProgramme } from '@/lib/server/jafEligibility';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -54,30 +55,37 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const cvType = body.cvType || 'tech';
-    const note = body.note || '';
+    const cvSelection = body.cvSelection || 'cv1';
 
     await connectToDatabase();
     if (!mongoose.isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
     }
-    const openJob = await Job.findById(id).select('status applicationDeadline').lean();
+    const openJob = await Job.findById(id).select('status applicationDeadline eligibility').lean();
     if (!openJob || openJob.status !== 'Approved') {
       return NextResponse.json({ error: 'This job is not open for applications.' }, { status: 404 });
     }
-    if (openJob.applicationDeadline && new Date(openJob.applicationDeadline).getTime() < Date.now()) {
-      return NextResponse.json({ error: 'The application deadline for this job has passed.' }, { status: 400 });
+    if (!openJob.applicationDeadline || new Date(openJob.applicationDeadline).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'This JAF is not open for applications or its application deadline has passed.' }, { status: 400 });
     }
-    if (!['tech', 'non_tech', 'core'].includes(cvType)) {
-      return NextResponse.json({ error: 'Choose a valid CV type.' }, { status: 400 });
+    if (!['cv1', 'cv2', 'cv3'].includes(cvSelection)) {
+      return NextResponse.json({ error: 'Choose CV1, CV2, or CV3.' }, { status: 400 });
     }
 
-    let student: any = null;
-    if (identity.rollNumber) {
-      student = await getOrCreateStudent(identity);
+    if (!identity.rollNumber) {
+      return NextResponse.json({ error: 'Your student registration could not be identified.' }, { status: 403 });
     }
+
+    const student = await getOrCreateStudent(identity);
 
     if (student) {
+      if (!isStudentInEligibleProgramme(openJob, student)) {
+        return NextResponse.json(
+          { error: 'This JAF is not open to your registered programme.' },
+          { status: 403 },
+        );
+      }
+
       // Placed_Intern is set when the coordinator approves an offer (one-offer rule).
       if (student.status === 'Blocked' || student.status === 'Placed_Intern') {
         return NextResponse.json(
@@ -97,7 +105,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       // Add to student's applied list
       student.jobs_applied.push({
         job: mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : id,
-        profile: cvType,
+        cv_selection: cvSelection,
         status: 'none',
       });
       await student.save();
@@ -107,7 +115,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       await Job.findByIdAndUpdate(id, { $addToSet: { selectedStudents: student._id } });
       await Jobs.updateOne(
         { _id: id, 'cvs.student': { $ne: student._id } },
-        { $push: { cvs: { student: student._id, type: cvType, status: 'none' } } },
+        { $push: { cvs: { student: student._id, type: 'tech', status: 'none' } } },
       );
     }
 
@@ -122,7 +130,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteContext) {
+export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   try {
     const identity = await getPortalIdentity();
     const { id } = await params;
@@ -132,6 +140,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     }
 
     await connectToDatabase();
+    if (!mongoose.isValidObjectId(id)) {
+      return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
+    }
+    const job = await Job.findById(id).select('status applicationDeadline').lean();
+    if (!job || job.status !== 'Approved' || !job.applicationDeadline || new Date(job.applicationDeadline).getTime() <= Date.now()) {
+      return NextResponse.json({ error: 'Applications can only be withdrawn before the application closing date.' }, { status: 400 });
+    }
     const student = await Student.findOne({ roll_number: identity.rollNumber });
     if (student) {
       student.jobs_applied = (student.jobs_applied || []).filter(
@@ -139,10 +154,8 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
       );
       await student.save();
 
-      if (mongoose.isValidObjectId(id)) {
-        await Job.findByIdAndUpdate(id, { $pull: { selectedStudents: student._id } });
-        await Jobs.updateOne({ _id: id }, { $pull: { cvs: { student: student._id } } });
-      }
+      await Job.findByIdAndUpdate(id, { $pull: { selectedStudents: student._id } });
+      await Jobs.updateOne({ _id: id }, { $pull: { cvs: { student: student._id } } });
     }
 
     return NextResponse.json({

@@ -6,15 +6,6 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useUserRole } from '@/lib/auth';
 import { toast } from '@/components/ui/Toast';
 
-const programmes = [
-  'Biosciences and Bioengineering', 'Chemical Engineering', 'Chemistry', 'Civil Engineering',
-  'Computer Science and Engineering', 'Design', 'Electronics and Electrical Engineering',
-  'Humanities and Social Sciences', 'Mathematics', 'Mechanical Engineering', 'Physics',
-  'Intelligent Cyber Physical Systems', 'Disaster Management and Research', 'Environment',
-  'Energy', 'Nanotechnology', 'Rural Technology', 'Linguistic Science and Technology',
-  'Agro and Rural Technology', 'Indian Knowledge Systems', 'Business'
-];
-
 const termsAndConditions = [
   "The confirmation link sent to the company's/HR's registered email ID upon JAF submission must be clicked to acknowledge these terms and conditions. Until this confirmation is received, the JAF will not be visible for candidates to apply.",
   "All processes — uploading shortlists, Online Assessment (OA) candidate lists, interview lists, and final selections — must be carried out on this intern portal. No off-portal lists will be processed. Under exceptional cases, information of the shortlist/interview list via email is acceptable, but without uploading them in the portal, OA list generation, exam hall information, and candidate intimation in their respective emails will not happen.",
@@ -72,9 +63,8 @@ function JAFFormContent() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Tab 2 - Eligibility
-  const [eligibility, setEligibility] = useState(
-    programmes.map((p) => ({ programme: p, selected: false, cpiCutoff: 0 }))
-  );
+  const [programmeOptions, setProgrammeOptions] = useState<string[]>([]);
+  const [eligibility, setEligibility] = useState<Array<{ programme: string; selected: boolean; cpiCutoff: number }>>([]);
   const [tenthPercentage, setTenthPercentage] = useState<number | ''>('');
   const [twelfthPercentage, setTwelfthPercentage] = useState<number | ''>('');
   const [bachelorsCPI, setBachelorsCPI] = useState<number | ''>('');
@@ -88,9 +78,7 @@ function JAFFormContent() {
   const [sameCTC, setSameCTC] = useState<number | ''>('');
   const [sameBase, setSameBase] = useState<number | ''>('');
   const [sameMonthly, setSameMonthly] = useState<number | ''>('');
-  const [compensations, setCompensations] = useState(
-    programmes.map((p) => ({ programme: p, ctc: 0, base: 0, monthlyFixed: 0 }))
-  );
+  const [compensations, setCompensations] = useState<Array<{ programme: string; ctc: number; base: number; monthlyFixed: number }>>([]);
   const [oneTimeBonus, setOneTimeBonus] = useState<number | ''>('');
   const [accommodation, setAccommodation] = useState(false);
   const [ppoExtension, setPpoExtension] = useState(false);
@@ -130,6 +118,36 @@ function JAFFormContent() {
     { key: 'bond', label: 'Bond Contract' },
     { key: 'additional', label: 'Additional details' },
   ];
+
+  // This is the same collection used by student academic records. Keeping the
+  // JAF choices database-backed prevents a hard-coded form list from drifting
+  // away from the values used to decide student access.
+  useEffect(() => {
+    async function loadProgrammeOptions() {
+      try {
+        const response = await fetch('/phdplacement/api/jaf/disciplines');
+        if (!response.ok) throw new Error('Unable to load programme options');
+        const data = await response.json();
+        const rawDisciplines: unknown[] = Array.isArray(data.data) ? data.data : [];
+        const names = rawDisciplines.reduce<string[]>((result, discipline) => {
+              const name = typeof discipline === 'object' && discipline !== null
+                ? (discipline as { name?: unknown }).name
+                : undefined;
+              if (typeof name === 'string') result.push(name);
+              return result;
+            }, []);
+        const uniqueNames = [...new Set(names)].sort((a, b) => a.localeCompare(b));
+        setProgrammeOptions(uniqueNames);
+        setEligibility((current) => uniqueNames.map((programme) => current.find((item) => item.programme === programme) || ({ programme, selected: false, cpiCutoff: 0 })));
+        setCompensations((current) => uniqueNames.map((programme) => current.find((item) => item.programme === programme) || ({ programme, ctc: 0, base: 0, monthlyFixed: 0 })));
+      } catch (error) {
+        console.error('Failed to load programme options', error);
+        toast.error('Unable to load the programme list. Please refresh and try again.');
+      }
+    }
+
+    loadProgrammeOptions();
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string, setUrl: (url: string) => void, setLoading: (b: boolean) => void) => {
     const file = e.target.files?.[0];
@@ -245,7 +263,7 @@ function JAFFormContent() {
         })
         .catch((err) => console.error('Failed to load JAF', err));
     }
-  }, [editId]);
+  }, [editId, programmeOptions]);
 
   const tabOrder: TabKey[] = ['job', 'eligibility', 'salary', 'selection', 'bond', 'additional'];
 
@@ -298,10 +316,14 @@ function JAFFormContent() {
       if (descType === 'file' && !jobDescFile) return 'Job Description file is required';
       if (!placeOfPosting.trim()) return 'Place of Posting is required';
       if (!expectedRecruitments) return 'Expected number of Recruitments is required';
+    } else if (activeTab === 'eligibility' && !eligibility.some((item) => item.selected)) {
+      return 'Select at least one eligible programme';
     } else if (activeTab === 'salary') {
       if (!currency) return 'Currency is required';
     } else if (activeTab === 'additional') {
-      if (!additionalDescription.trim()) return 'Description of the additional details is required';
+      if (additionalTitle.trim() && !additionalDescription.trim()) {
+        return 'Description of the additional details is required when a title is provided';
+      }
     }
     return null; // No errors
   };
@@ -378,9 +400,9 @@ function JAFFormContent() {
       });
     } else if (activeTab === 'additional') {
       await saveTabToBackend('additional', {
-        additionalRequirements: [
-          { title: additionalTitle, description: additionalDescription }
-        ],
+        additionalRequirements: additionalTitle.trim() || additionalDescription.trim()
+          ? [{ title: additionalTitle.trim(), description: additionalDescription.trim() }]
+          : [],
         agreedToTerms: agreedTerms
       });
       
@@ -404,6 +426,12 @@ function JAFFormContent() {
       };
     }));
     toast.success('Applied to eligible programmes.');
+  };
+
+  const allProgrammesSelected = eligibility.length > 0 && eligibility.every((item) => item.selected);
+
+  const toggleAllProgrammes = (selected: boolean) => {
+    setEligibility((current) => current.map((item) => ({ ...item, selected })));
   };
 
   if (isCoordinator || isStudent) {
@@ -645,8 +673,8 @@ function JAFFormContent() {
                   <input type="number" value={bachelorsCPI} onChange={(e) => setBachelorsCPI(e.target.value ? Number(e.target.value) : '')} placeholder="CPI out of 10" className="w-full p-2 border border-gray-200 rounded focus:outline-none focus:border-[#1B2A4A] text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-700 mb-1.5">Master's CPI</label>
-                  <input type="number" value={mastersCPI} onChange={(e) => setMastersCPI(e.target.value ? Number(e.target.value) : '')} placeholder="CPI out of 10" className="w-full p-2 border border-gray-200 rounded focus:outline-none focus:border-[#1B2A4A] text-sm" />
+                  <label className="block text-sm text-gray-700 mb-1.5">Master&apos;s CPI <span className="text-xs text-gray-400">(optional)</span></label>
+                  <input type="number" required={false} value={mastersCPI} onChange={(e) => setMastersCPI(e.target.value ? Number(e.target.value) : '')} placeholder="CPI out of 10 (optional)" className="w-full p-2 border border-gray-200 rounded focus:outline-none focus:border-[#1B2A4A] text-sm" />
                 </div>
               </div>
             </div>
@@ -660,7 +688,18 @@ function JAFFormContent() {
             <hr className="border-gray-200" />
 
             <div>
-              <p className="text-sm font-bold text-gray-900 mb-4">Select eligible programmes and set CPI cutoff for the role</p>
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <p className="text-sm font-bold text-gray-900">Select eligible programmes and set CPI cutoff for the role</p>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={allProgrammesSelected}
+                    onChange={(e) => toggleAllProgrammes(e.target.checked)}
+                    className="w-4 h-4 accent-[#1B2A4A]"
+                  />
+                  Select all programmes
+                </label>
+              </div>
               <div className="space-y-4">
                 {eligibility.map((item, idx) => (
                   <div key={item.programme} className="flex items-center gap-4">
@@ -680,16 +719,20 @@ function JAFFormContent() {
                       min={0}
                       max={10}
                       value={item.cpiCutoff}
+                      disabled={!item.selected}
                       onChange={(e) => {
                         const updated = [...eligibility];
                         updated[idx].cpiCutoff = Number(e.target.value);
                         setEligibility(updated);
                       }}
-                      className="w-[100px] p-2 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#1B2A4A]"
+                      className="w-[100px] p-2 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#1B2A4A] disabled:bg-gray-100 disabled:text-gray-400"
                       placeholder="CPI"
                     />
                   </div>
                 ))}
+                {!programmeOptions.length && (
+                  <p className="text-sm text-gray-500">Loading programme list…</p>
+                )}
               </div>
             </div>
             <div className="pt-4">
@@ -1035,7 +1078,10 @@ function JAFFormContent() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Description of the additional details required <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                Description of the additional details required
+                {additionalTitle.trim() && <span className="text-red-500"> *</span>}
+              </label>
               <div className="max-w-[500px] border border-gray-200 rounded overflow-hidden">
                 <div className="flex gap-1 p-2 border-b border-gray-200 bg-white">
                   <button type="button" className="px-2 py-1 text-sm font-bold hover:bg-gray-100 rounded">B</button>

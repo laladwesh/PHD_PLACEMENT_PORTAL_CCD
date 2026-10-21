@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
+import Discipline from '@/lib/server/models/Discipline';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function PUT(
@@ -37,11 +38,35 @@ export async function PUT(
         if (body.placeOfPosting !== undefined) job.placeOfPosting = body.placeOfPosting;
         if (body.numOpenings !== undefined) job.numOpenings = body.numOpenings;
         if (body.dateOfJoining !== undefined) job.dateOfJoining = body.dateOfJoining;
-        if (body.applicationDeadline !== undefined) job.applicationDeadline = body.applicationDeadline;
+        // The coordinator sets the application closing date while approving the JAF.
+        // Recruiters may set the date of joining, but cannot open or close applications.
         break;
 
       case 'eligibility':
-        if (body.eligibility !== undefined) job.eligibility = body.eligibility;
+        if (body.eligibility !== undefined) {
+          if (!Array.isArray(body.eligibility) || body.eligibility.length === 0) {
+            return NextResponse.json({ error: 'Select at least one eligible programme.' }, { status: 400 });
+          }
+
+          const knownProgrammes = new Set(
+            (await Discipline.find({}).select('name').lean()).map((discipline) => discipline.name),
+          );
+          const eligibility: Array<{ department: string; cpiCutoff: number }> = (body.eligibility as Array<{ department?: unknown; cpiCutoff?: unknown }>).map((criterion) => ({
+            department: typeof criterion?.department === 'string' ? criterion.department.trim() : '',
+            cpiCutoff: Number(criterion?.cpiCutoff),
+          }));
+          const invalid = eligibility.some(
+            (criterion: { department: string; cpiCutoff: number }) =>
+              !knownProgrammes.has(criterion.department) ||
+              !Number.isFinite(criterion.cpiCutoff) ||
+              criterion.cpiCutoff < 0 ||
+              criterion.cpiCutoff > 10,
+          );
+          if (invalid) {
+            return NextResponse.json({ error: 'Eligible programmes or CPI cut-offs are invalid.' }, { status: 400 });
+          }
+          job.eligibility = eligibility;
+        }
         if (body.allowBacklog !== undefined) job.allowBacklog = body.allowBacklog;
         if (body.academicEligibility !== undefined) job.academicEligibility = body.academicEligibility;
         break;
