@@ -433,16 +433,15 @@ function CvRegistration() {
             <p className="mt-1">
               <strong>Admin review note:</strong> {student.cv_flag_note || 'Your CV has been flagged for revisions. Please review the feedback and update your file.'}
             </p>
-            {!student.cv_reupload_allowed && <p className="mt-1 text-xs text-amber-700">Re-upload is currently disabled by coordinator.</p>}
+            <p className="mt-1 text-xs text-amber-700">You can upload a replacement CV at any time; it is verified automatically.</p>
           </div>
         ) : student.cv_verified ? (
           <div className="border-l-4 border-emerald-500 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-xs">
             <div className="font-semibold flex items-center gap-2">
-              <span>✓</span> CV Verified by CCD Coordinator
+              <span>✓</span> CV Verified
             </div>
             <p className="mt-1 text-xs text-emerald-700">
-              Your uploaded CV has been verified and approved for company applications.
-              {student.cv_verified_by ? ` (Verified by: ${student.cv_verified_by})` : ''}
+              Your CV is verified automatically when you upload it, and you can upload or replace it at any time.
             </p>
           </div>
         ) : hasAnyCv ? (
@@ -510,13 +509,12 @@ function CvRegistration() {
               <p className="text-sm text-slate-500">ⓘ &nbsp;{slot.description}</p>
               <div className="flex items-center gap-3 sm:justify-end">
                 <span className={`whitespace-nowrap rounded px-2.5 py-1 text-xs font-semibold ${slotStatus.classes}`}>{slotStatus.text}</span>
-                <label className={`cursor-pointer rounded border px-3 py-2 text-sm font-semibold ${student.cv_flagged && !student.cv_reupload_allowed ? 'pointer-events-none border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+                <label className="cursor-pointer rounded border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                   {isUploaded ? 'Replace' : 'Choose PDF'}
                   <input
                     className="sr-only"
                     type="file"
                     accept="application/pdf,.pdf"
-                    disabled={student.cv_flagged && !student.cv_reupload_allowed}
                     onChange={(event) => handleUpload(slot.key, event)}
                   />
                 </label>
@@ -527,7 +525,10 @@ function CvRegistration() {
         <section className="bg-white p-5 shadow-sm sm:px-7">
           <h2 className="mb-4 font-bold text-[#172b4d]">Additional links</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-semibold text-slate-800">Google Drive link for CV verification
+            <label className="text-sm font-semibold text-slate-800 md:col-span-2">Google Drive folder link (publications &amp; proofs)
+              <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                Optional. Share one folder and keep adding your latest publications and proof documents to it. Make sure anyone with the link can view it. You can change this link at any time.
+              </span>
               <input type="url" value={student.cv.drive_Link ?? ''} onChange={(event) => setStudent((current) => ({ ...current, cv: { ...current.cv, drive_Link: event.target.value } }))} placeholder="https://drive.google.com/..." className="mt-1.5 h-10 w-full rounded border border-slate-400 px-3 font-normal outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
             </label>
           </div>

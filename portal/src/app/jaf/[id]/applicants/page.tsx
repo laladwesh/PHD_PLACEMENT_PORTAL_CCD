@@ -24,6 +24,11 @@ interface Candidate {
   supervisor?: string;
   supervisorNoc?: boolean;
   expectedGraduation?: string;
+  googleScholarLink?: string;
+  linkedinUrl?: string;
+  portfolioLink?: string;
+  driveLink?: string;
+  arcId?: string;
 }
 
 export default function ApplicantsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -108,6 +113,11 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                   supervisor: 'Prof. Faculty Advisor',
                   supervisorNoc: true,
                   expectedGraduation: 'May 2027',
+                  googleScholarLink: s.google_scholar_link || '',
+                  linkedinUrl: s.linkedin_url || '',
+                  portfolioLink: s.portfolio_link || '',
+                  driveLink: s.drive_link || '',
+                  arcId: s.arc_id || '',
                 };
               });
               setCandidates(mapped);
@@ -629,6 +639,40 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                     {selectedCandidate.expectedGraduation || 'May 2027'}
                   </span>
                 </div>
+              </div>
+
+              {/* Social Education Profile (all optional for the student) */}
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Social Education Profile
+                </h4>
+                <dl className="grid grid-cols-2 gap-3 text-xs bg-gray-50 border border-gray-200 rounded-md p-3">
+                  {([
+                    ['Google Scholar', selectedCandidate.googleScholarLink],
+                    ['LinkedIn', selectedCandidate.linkedinUrl],
+                    ['Portfolio', selectedCandidate.portfolioLink],
+                    ['Drive folder (publications & proofs)', selectedCandidate.driveLink],
+                  ] as const).map(([label, link]) => (
+                    <div key={label} className="min-w-0">
+                      <dt className="text-gray-500 font-medium">{label}</dt>
+                      <dd className="mt-0.5 truncate">
+                        {link && /^https?:\/\//i.test(link) ? (
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="text-[#1B2A4A] font-semibold hover:underline" title={link}>
+                            {link}
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">Not provided</span>
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                  <div className="min-w-0">
+                    <dt className="text-gray-500 font-medium">ARC ID</dt>
+                    <dd className="mt-0.5 text-gray-900 font-semibold">
+                      {selectedCandidate.arcId || <span className="text-gray-400 font-normal">Not provided</span>}
+                    </dd>
+                  </div>
+                </dl>
               </div>
 
               {/* Research Focus */}

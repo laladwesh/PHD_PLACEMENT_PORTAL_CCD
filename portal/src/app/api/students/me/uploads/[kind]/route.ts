@@ -64,10 +64,8 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   let savedPath = '';
   try {
-    const student = await getOrCreateStudent(identity);
-    if (kind !== 'profile' && student.cv_flagged && !student.cv_reupload_allowed) {
-      return NextResponse.json({ error: 'CV re-upload is disabled until CCD allows it.' }, { status: 403 });
-    }
+    // PhD scholars may upload or replace CVs at any time; no coordinator permission is needed.
+    await getOrCreateStudent(identity);
 
     const location = getUploadLocation(identity.rollNumber, kind, isPhoto ? extension : '.pdf');
     await mkdir(location.folder, { recursive: true });
@@ -77,11 +75,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     const updatePath = uploadKinds[kind].field;
     const studentUpdate: Record<string, unknown> = { [updatePath]: location.relativePath };
     if (kind !== 'profile') {
-      studentUpdate.cv_verified = false;
+      // CVs are verified automatically on upload. A coordinator can still flag one afterwards;
+      // uploading a replacement clears the flag and verifies again.
+      studentUpdate.cv_verified = true;
       studentUpdate.cv_flagged = false;
       studentUpdate.cv_flag_note = '';
-      studentUpdate.cv_verified_by = '';
-      studentUpdate.cv_verified_at = null;
+      studentUpdate.cv_verified_by = 'Auto-verified on upload';
+      studentUpdate.cv_verified_at = new Date();
+      studentUpdate.cv_reupload_allowed = true;
     }
     const updatedStudent = await Student.findOneAndUpdate(
       { roll_number: identity.rollNumber },

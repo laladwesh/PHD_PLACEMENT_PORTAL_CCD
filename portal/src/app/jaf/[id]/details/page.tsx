@@ -369,15 +369,15 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <div>
                   <p className="text-[11px] font-semibold uppercase text-gray-400 mb-0.5">10th Cutoff</p>
-                  <p className="font-bold text-gray-800">{job.academicEligibility?.tenthPercentage || 75}%</p>
+                  <p className="font-bold text-gray-800">{job.academicEligibility?.tenthPercentage ? `${job.academicEligibility.tenthPercentage}%` : 'None'}</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase text-gray-400 mb-0.5">12th Cutoff</p>
-                  <p className="font-bold text-gray-800">{job.academicEligibility?.twelfthPercentage || 75}%</p>
+                  <p className="font-bold text-gray-800">{job.academicEligibility?.twelfthPercentage ? `${job.academicEligibility.twelfthPercentage}%` : 'None'}</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase text-gray-400 mb-0.5">Min Bachelor's CPI</p>
-                  <p className="font-bold text-gray-800">{job.academicEligibility?.bachelorsCPI || 7.0}</p>
+                  <p className="font-bold text-gray-800">{job.academicEligibility?.bachelorsCPI || 'None'}</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase text-gray-400 mb-0.5">Allow Backlogs</p>
@@ -385,8 +385,38 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
 
-              <h3 className="text-xs font-bold text-gray-900 mb-2">Eligible Departments & CPI Cutoffs</h3>
-              {job.eligibility && job.eligibility.length > 0 ? (
+              <h3 className="text-xs font-bold text-gray-900 mb-2">Eligible Programmes & CPI Cutoffs</h3>
+              {Array.isArray(job.eligible_programmes) && job.eligible_programmes.length > 0 ? (
+                <div className="border border-gray-200 rounded-lg overflow-hidden shadow-2xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-[#f8fafc] border-b border-gray-200 text-xs font-semibold text-gray-600">
+                      <tr>
+                        <th className="px-4 py-2.5 w-12 text-center">#</th>
+                        <th className="px-4 py-2.5">Programme</th>
+                        <th className="px-4 py-2.5">Discipline</th>
+                        <th className="px-4 py-2.5 w-32 text-center">Major (min CPI)</th>
+                        <th className="px-4 py-2.5 w-32 text-center">Minor (min CPI)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-xs">
+                      {job.eligible_programmes.map((row: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50/80">
+                          <td className="px-4 py-2 text-center text-gray-400">{i + 1}</td>
+                          <td className="px-4 py-2 font-medium text-gray-800">{row.programme?.programme || '—'}</td>
+                          <td className="px-4 py-2 text-gray-800">{row.programme?.discipline || '—'}</td>
+                          <td className="px-4 py-2 text-center font-bold text-emerald-700">
+                            {row.major?.allowed ? Number(row.major.cpi_cutoff || 0).toFixed(2) : <span className="font-normal text-gray-400">Not eligible</span>}
+                          </td>
+                          <td className="px-4 py-2 text-center font-bold text-emerald-700">
+                            {row.minor?.allowed ? Number(row.minor.cpi_cutoff || 0).toFixed(2) : <span className="font-normal text-gray-400">Not eligible</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+              {!(Array.isArray(job.eligible_programmes) && job.eligible_programmes.length > 0) && (job.eligibility && job.eligibility.length > 0 ? (
                 <div className="border border-gray-200 rounded-lg overflow-hidden shadow-2xs">
                   <table className="w-full text-left">
                     <thead className="bg-[#f8fafc] border-b border-gray-200 text-xs font-semibold text-gray-600">
@@ -401,7 +431,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                         <tr key={i} className="hover:bg-slate-50/80">
                           <td className="px-4 py-2 text-center text-gray-400">{i + 1}</td>
                           <td className="px-4 py-2 font-medium text-gray-800">{el.department}</td>
-                          <td className="px-4 py-2 text-center font-bold text-emerald-700">{el.cpiCutoff || 7.5}</td>
+                          <td className="px-4 py-2 text-center font-bold text-emerald-700">{Number(el.cpiCutoff || 0).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -409,7 +439,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                 </div>
               ) : (
                 <p className="text-gray-500 bg-slate-50 p-4 rounded border">All PhD departments are eligible.</p>
-              )}
+              ))}
             </div>
           )}
 

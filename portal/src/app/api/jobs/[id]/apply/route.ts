@@ -6,7 +6,7 @@ import { Jobs } from '@/models';
 import Student from '@/lib/server/models/Student';
 import { getPortalIdentity } from '@/lib/server/identity';
 import { getOrCreateStudent } from '@/lib/server/studentRepository';
-import { isStudentInEligibleProgramme } from '@/lib/server/jafEligibility';
+import { evaluateJafEligibility } from '@/lib/server/jafEligibility';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!mongoose.isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
     }
-    const openJob = await Job.findById(id).select('status applicationDeadline eligibility').lean();
+    const openJob = await Job.findById(id).select('status applicationDeadline eligibility eligible_programmes academicEligibility allowBacklog').lean();
     if (!openJob || openJob.status !== 'Approved') {
       return NextResponse.json({ error: 'This job is not open for applications.' }, { status: 404 });
     }
@@ -79,9 +79,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const student = await getOrCreateStudent(identity);
 
     if (student) {
-      if (!isStudentInEligibleProgramme(openJob, student)) {
+      const eligibility = evaluateJafEligibility(openJob, student);
+      if (!eligibility.eligible) {
         return NextResponse.json(
-          { error: 'This JAF is not open to your registered programme.' },
+          { error: `You are not eligible for this role. ${eligibility.reasons.join(' ')}`, reasons: eligibility.reasons },
           { status: 403 },
         );
       }

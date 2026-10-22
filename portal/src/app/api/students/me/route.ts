@@ -16,6 +16,31 @@ const schoolingFields = new Set([
 ]);
 const linkFields = new Set(['drive_Link']);
 
+// Profile links are mandatory when submitted; the Google Drive folder is optional.
+const urlFields = new Set(['linkedin_url', 'portfolio_url', 'google_scholar_url', 'cv.drive_Link']);
+const maxLength: Record<string, number> = { orcid_id: 60 };
+
+function validateOptionalFields(update: Record<string, unknown>): string | null {
+  for (const [key, raw] of Object.entries(update)) {
+    if (!urlFields.has(key) && !(key in maxLength)) continue;
+    if (raw === undefined || raw === null) { update[key] = ''; continue; }
+    if (typeof raw !== 'string') return `${key} must be text.`;
+    const value = raw.trim();
+    update[key] = value;
+    if (!value) continue;
+    if (value.length > (maxLength[key] ?? 300)) return `${key} is too long.`;
+    if (urlFields.has(key)) {
+      try {
+        const url = new URL(value);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return 'Links must start with http:// or https://';
+      } catch {
+        return 'Enter a valid link, for example https://scholar.google.com/...';
+      }
+    }
+  }
+  return null;
+}
+
 export async function GET() {
   const identity = await getPortalIdentity();
   if (identity.role !== 'student' || !identity.rollNumber) {
@@ -67,6 +92,9 @@ export async function PATCH(request: Request) {
         for (const [key, value] of Object.entries(cleanLinks)) update[`cv.${key}`] = value;
       }
     }
+
+    const invalid = validateOptionalFields(update);
+    if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
     if (!Object.keys(update).length) {
       return NextResponse.json({ error: 'No editable registration fields provided.' }, { status: 400 });

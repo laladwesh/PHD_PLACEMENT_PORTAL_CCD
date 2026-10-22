@@ -11,6 +11,12 @@ export interface IJob extends Document {
   applicationDeadline?: Date;
   eligibility?: Array<{ department?: string; cpiCutoff: number }>;
   allowBacklog?: boolean;
+  // Placement-portal style eligibility: one entry per programme, with separate major/minor rules.
+  eligible_programmes?: Array<{
+    programme: mongoose.Types.ObjectId;
+    major: { allowed: boolean; cpi_cutoff: number };
+    minor: { allowed: boolean; cpi_cutoff: number };
+  }>;
   academicEligibility?: {
     tenthPercentage?: number;
     twelfthPercentage?: number;
@@ -84,6 +90,14 @@ const JobSchema = new Schema<IJob>(
       mastersCPI: { type: Number },
     },
     allowBacklog: { type: Boolean },
+    eligible_programmes: [
+      {
+        _id: false,
+        programme: { type: Schema.Types.ObjectId, ref: 'programmes' },
+        major: { allowed: { type: Boolean, default: false }, cpi_cutoff: { type: Number, default: 0 } },
+        minor: { allowed: { type: Boolean, default: false }, cpi_cutoff: { type: Number, default: 0 } },
+      },
+    ],
     salary: {
       currency: { type: String },
       salaryStructureFile: { type: String },
