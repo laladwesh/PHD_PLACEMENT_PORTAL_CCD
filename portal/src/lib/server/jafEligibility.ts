@@ -165,7 +165,8 @@ export function evaluateJafEligibility(job: JobLike, student: StudentLike, index
         if (row.minor.cpi_cutoff == null || minorCpi + CPI_TOLERANCE >= row.minor.cpi_cutoff) cpiMet = true;
       }
     }
-    if (!programmeOpen) reasons.push('Your programme is not eligible for this role.');
+    if (!majorId && !minorId) reasons.push('Your programme could not be identified from your profile. Please contact CCD.');
+    else if (!programmeOpen) reasons.push('Your programme is not eligible for this role.');
     else if (!cpiMet) reasons.push('Your CPI is below the cut-off for your programme.');
   } else {
     // JAF created before programmes existed: match the department list.
