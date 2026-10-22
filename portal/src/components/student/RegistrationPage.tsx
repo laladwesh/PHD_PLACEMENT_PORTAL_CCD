@@ -12,7 +12,7 @@ import {
 } from '@/lib/studentRegistration';
 
 type RegistrationStep = 'profile' | 'cv' | 'fee';
-type ProfileSection = 'Basic Information' | 'Address' | 'Schooling' | 'Entrance Exam' | 'Academics' | 'CPI';
+type ProfileSection = 'Basic Information' | 'Address' | 'Profile Links' | 'Schooling' | 'Entrance Exam' | 'Academics' | 'CPI';
 type FieldDefinition = {
   label: string;
   path: string;
@@ -26,6 +26,7 @@ type FieldDefinition = {
 const sections: ProfileSection[] = [
   'Basic Information',
   'Address',
+  'Profile Links',
   'Schooling',
   'Entrance Exam',
   'Academics',
@@ -36,7 +37,7 @@ const numericPaths = new Set([
   'roll_number', 'mobile_campus', 'mobile_campus_alt', 'mobile_home', 'pincode',
   'schooling.x_percentage', 'schooling.x_pass_year', 'schooling.xii_percentage',
   'schooling.xii_pass_year', 'schooling.gap', 'year_of_admission',
-  'year_of_minor_admission', 'backlogs', 'jee_ma_gate_rank', 'major_cpi', 'minor_cpi',
+  'backlogs', 'jee_ma_gate_rank', 'major_cpi',
 ]);
 
 const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
@@ -55,7 +56,6 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Disability', path: 'disability', placeholder: 'If applicable' },
     { label: 'Hostel', path: 'hostel' },
     { label: 'Room number', path: 'room_number' },
-    { label: 'LinkedIn profile', path: 'linkedin_url', type: 'url' },
   ],
   Address: [
     { label: 'Flat / house number', path: 'flat_no' },
@@ -63,6 +63,12 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'City', path: 'city', required: true },
     { label: 'State', path: 'state', required: true },
     { label: 'PIN code', path: 'pincode', type: 'number', required: true },
+  ],
+  'Profile Links': [
+    { label: 'LinkedIn Profile', path: 'linkedin_url', type: 'url', required: true, placeholder: 'https://www.linkedin.com/in/your-profile' },
+    { label: 'Portfolio Website', path: 'portfolio_url', type: 'url', required: true, placeholder: 'https://your-portfolio.example' },
+    { label: 'Google Scholar Profile', path: 'google_scholar_url', type: 'url', required: true, placeholder: 'https://scholar.google.com/...' },
+    { label: 'ORCID iD', path: 'orcid_id', required: true, placeholder: '0000-0000-0000-0000' },
   ],
   Schooling: [
     { label: 'Class X percentage', path: 'schooling.x_percentage', type: 'number' },
@@ -92,15 +98,10 @@ const academicFields = [
   { label: 'Major CPI', path: 'major_cpi' },
   { label: 'Major Programme', path: 'academic_details.major_programme' },
   { label: 'Major Discipline', path: 'academic_details.major_discipline' },
-  { label: 'Minor Admission Year', path: 'year_of_minor_admission' },
-  { label: 'Minor Department', path: 'academic_details.minor_department' },
-  { label: 'Minor Discipline', path: 'academic_details.minor_discipline' },
 ];
 
 const cpiFields = [
   { label: 'Major CPI', path: 'major_cpi' },
-  { label: 'Minor CPI', path: 'minor_cpi' },
-  ...Array.from({ length: 12 }, (_, index) => ({ label: `Semester ${index + 1} SPI`, path: `semester_wise_spi.spi_${index + 1}` })),
 ];
 
 function emptyStudentRecord(): StudentRecord {
@@ -114,7 +115,6 @@ function emptyStudentRecord(): StudentRecord {
     schooling: {},
     cv: {},
     backlogs: 0,
-    semester_wise_spi: {},
     cv_verified: false,
     cv_flagged: false,
     cv_flag_note: '',
@@ -529,9 +529,6 @@ function CvRegistration() {
           <div className="grid gap-4 md:grid-cols-2">
             <label className="text-sm font-semibold text-slate-800">Google Drive link for CV verification
               <input type="url" value={student.cv.drive_Link ?? ''} onChange={(event) => setStudent((current) => ({ ...current, cv: { ...current.cv, drive_Link: event.target.value } }))} placeholder="https://drive.google.com/..." className="mt-1.5 h-10 w-full rounded border border-slate-400 px-3 font-normal outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
-            </label>
-            <label className="text-sm font-semibold text-slate-800">Portfolio link
-              <input type="url" value={student.cv.portfolio_Link ?? ''} onChange={(event) => setStudent((current) => ({ ...current, cv: { ...current.cv, portfolio_Link: event.target.value } }))} placeholder="https://" className="mt-1.5 h-10 w-full rounded border border-slate-400 px-3 font-normal outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
             </label>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">

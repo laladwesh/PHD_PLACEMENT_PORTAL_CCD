@@ -62,10 +62,6 @@ const studentSchema = new Schema({
     required: false,
     max: [10, "CPI can not be more than 10"],
   },
-  minor_cpi: {
-    type: Number,
-    max: [10, "CPI can not be more than 10"],
-  },
   max_profiles: {
     type: Number,
     default: 500,
@@ -86,10 +82,6 @@ const studentSchema = new Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "programmes",
     required: true,
-  },
-  minor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "programmes",
   },
   room_number: {
     type: String,
@@ -124,6 +116,16 @@ const studentSchema = new Schema({
   },
   linkedin_url: {
     type: mongoose.SchemaTypes.Url,
+  },
+  portfolio_url: {
+    type: mongoose.SchemaTypes.Url,
+  },
+  google_scholar_url: {
+    type: mongoose.SchemaTypes.Url,
+  },
+  orcid_id: {
+    type: String,
+    trim: true,
   },
   flat_no: {
     type: String,
@@ -193,7 +195,6 @@ const studentSchema = new Schema({
     non_tech: String,
     core: String,
     drive_Link: String,
-    portfolio_Link: String,
   },
   category: {
     type: String,
@@ -235,9 +236,6 @@ const studentSchema = new Schema({
   year_of_admission: {
     type: Number,
   },
-  year_of_minor_admission: {
-    type: Number,
-  },
   jobs_applied: {
     type: [jobAppSchema],
     ref: "jobs",
@@ -270,44 +268,6 @@ const studentSchema = new Schema({
   },
   entrance_examination: {
     type: String,
-  },
-  semester_wise_spi: {
-    spi_1: {
-      type: String,
-    },
-    spi_2: {
-      type: String,
-    },
-    spi_3: {
-      type: String,
-    },
-    spi_4: {
-      type: String,
-    },
-    spi_5: {
-      type: String,
-    },
-    spi_6: {
-      type: String,
-    },
-    spi_7: {
-      type: String,
-    },
-    spi_8: {
-      type: String,
-    },
-    spi_9: {
-      type: String,
-    },
-    spi_10: {
-      type: String,
-    },
-    spi_11: {
-      type: String,
-    },
-    spi_12: {
-      type: String,
-    },
   },
   savedAnnouncements: [
     {

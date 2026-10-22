@@ -134,12 +134,6 @@ async function seed() {
       backlogs: 0,
       year_of_admission: 2022,
       major_cpi: 8.92,
-      semester_wise_spi: {
-        spi_1: '9.0',
-        spi_2: '8.8',
-        spi_3: '9.1',
-        spi_4: '8.9',
-      },
       academic_details: {
         major_department: 'Computer Science and Engineering',
         major_programme: 'Ph.D.',
@@ -164,12 +158,6 @@ async function seed() {
       backlogs: 0,
       year_of_admission: 2022,
       major_cpi: 9.15,
-      semester_wise_spi: {
-        spi_1: '9.2',
-        spi_2: '9.0',
-        spi_3: '9.3',
-        spi_4: '9.1',
-      },
       academic_details: {
         major_department: 'Electronics and Electrical Engineering',
         major_programme: 'Ph.D.',

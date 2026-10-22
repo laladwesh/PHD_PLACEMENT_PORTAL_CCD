@@ -5,15 +5,16 @@ import Student from '@/lib/server/models/Student';
 
 const editableFields = new Set([
   'name', 'gender', 'dob', 'nationality', 'alt_email', 'mobile_campus',
-  'mobile_campus_alt', 'mobile_home', 'disability', 'linkedin_url', 'flat_no',
+  'mobile_campus_alt', 'mobile_home', 'disability', 'flat_no',
   'address', 'city', 'state', 'pincode', 'hostel', 'room_number', 'category',
   'entrance_examination', 'jee_ma_gate_rank', 'rank_category',
 ]);
+const profileLinkFields = ['linkedin_url', 'portfolio_url', 'google_scholar_url', 'orcid_id'] as const;
 const schoolingFields = new Set([
   'x_percentage', 'x_pass_year', 'x_board', 'x_exam_medium', 'xii_percentage',
   'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'gap', 'reason_gap',
 ]);
-const linkFields = new Set(['drive_Link', 'portfolio_Link']);
+const linkFields = new Set(['drive_Link']);
 
 export async function GET() {
   const identity = await getPortalIdentity();
@@ -42,6 +43,15 @@ export async function PATCH(request: Request) {
 
     for (const [key, value] of Object.entries(body)) {
       if (editableFields.has(key)) update[key] = value;
+    }
+
+    for (const field of profileLinkFields) {
+      if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+      const value = body[field];
+      if (typeof value !== 'string' || !value.trim()) {
+        return NextResponse.json({ error: `${field.replaceAll('_', ' ')} is required.` }, { status: 400 });
+      }
+      update[field] = value.trim();
     }
 
     if (body.schooling && typeof body.schooling === 'object' && !Array.isArray(body.schooling)) {
