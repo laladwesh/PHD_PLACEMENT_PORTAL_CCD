@@ -12,7 +12,7 @@ import {
 } from '@/lib/studentRegistration';
 
 type RegistrationStep = 'profile' | 'cv' | 'fee';
-type ProfileSection = 'Basic Information' | 'Address' | 'Schooling' | 'Entrance Exam' | 'Academics' | 'CPI';
+type ProfileSection = 'Basic Information' | 'Social Education Profile' | 'Address' | 'Schooling' | 'Entrance Exam' | 'Academics' | 'CPI';
 type FieldDefinition = {
   label: string;
   path: string;
@@ -25,6 +25,7 @@ type FieldDefinition = {
 
 const sections: ProfileSection[] = [
   'Basic Information',
+  'Social Education Profile',
   'Address',
   'Schooling',
   'Entrance Exam',
@@ -55,7 +56,13 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Disability', path: 'disability', placeholder: 'If applicable' },
     { label: 'Hostel', path: 'hostel' },
     { label: 'Room number', path: 'room_number' },
-    { label: 'LinkedIn profile', path: 'linkedin_url', type: 'url' },
+  ],
+  // All four are optional.
+  'Social Education Profile': [
+    { label: 'Google Scholar Link', path: 'google_scholar_link', type: 'url', placeholder: 'https://scholar.google.com/citations?user=...' },
+    { label: 'LinkedIn Profile', path: 'linkedin_url', type: 'url', placeholder: 'https://www.linkedin.com/in/...' },
+    { label: 'Portfolio', path: 'cv.portfolio_Link', type: 'url', placeholder: 'https://...' },
+    { label: 'ARC ID', path: 'arc_id', placeholder: 'Optional' },
   ],
   Address: [
     { label: 'Flat / house number', path: 'flat_no' },
@@ -304,6 +311,9 @@ function ProfileRegistration() {
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Registration profile</p>
               <h2 className="mt-1 text-xl font-bold text-[#172b4d]">{section}</h2>
             </div>
+            {section === 'Social Education Profile' && (
+              <p className="text-sm text-slate-500">All fields in this section are optional.</p>
+            )}
             {section === 'Basic Information' && student.name && (
               <p className="text-sm text-slate-500">Institute email: <span className="font-medium text-slate-700">{student.email}</span></p>
             )}
@@ -433,16 +443,15 @@ function CvRegistration() {
             <p className="mt-1">
               <strong>Admin review note:</strong> {student.cv_flag_note || 'Your CV has been flagged for revisions. Please review the feedback and update your file.'}
             </p>
-            {!student.cv_reupload_allowed && <p className="mt-1 text-xs text-amber-700">Re-upload is currently disabled by coordinator.</p>}
+            <p className="mt-1 text-xs text-amber-700">You can upload a replacement CV at any time; it is verified automatically.</p>
           </div>
         ) : student.cv_verified ? (
           <div className="border-l-4 border-emerald-500 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-xs">
             <div className="font-semibold flex items-center gap-2">
-              <span>✓</span> CV Verified by CCD Coordinator
+              <span>✓</span> CV Verified
             </div>
             <p className="mt-1 text-xs text-emerald-700">
-              Your uploaded CV has been verified and approved for company applications.
-              {student.cv_verified_by ? ` (Verified by: ${student.cv_verified_by})` : ''}
+              Your CV is verified automatically when you upload it, and you can upload or replace it at any time.
             </p>
           </div>
         ) : hasAnyCv ? (
@@ -510,13 +519,12 @@ function CvRegistration() {
               <p className="text-sm text-slate-500">ⓘ &nbsp;{slot.description}</p>
               <div className="flex items-center gap-3 sm:justify-end">
                 <span className={`whitespace-nowrap rounded px-2.5 py-1 text-xs font-semibold ${slotStatus.classes}`}>{slotStatus.text}</span>
-                <label className={`cursor-pointer rounded border px-3 py-2 text-sm font-semibold ${student.cv_flagged && !student.cv_reupload_allowed ? 'pointer-events-none border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+                <label className="cursor-pointer rounded border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                   {isUploaded ? 'Replace' : 'Choose PDF'}
                   <input
                     className="sr-only"
                     type="file"
                     accept="application/pdf,.pdf"
-                    disabled={student.cv_flagged && !student.cv_reupload_allowed}
                     onChange={(event) => handleUpload(slot.key, event)}
                   />
                 </label>

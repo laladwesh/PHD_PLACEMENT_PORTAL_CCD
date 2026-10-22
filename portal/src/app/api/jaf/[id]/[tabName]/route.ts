@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
 import Discipline from '@/lib/server/models/Discipline';
+import { buildEligibleProgrammes } from '@/lib/server/eligibleProgrammes';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function PUT(
@@ -43,7 +44,13 @@ export async function PUT(
         break;
 
       case 'eligibility':
-        if (body.eligibility !== undefined) {
+        // Programme rules (major/minor allowed + CPI cut-off per programme), as in the placement portal.
+        if (body.eligible_programmes !== undefined) {
+          const built = await buildEligibleProgrammes(body.eligible_programmes);
+          if ('error' in built) return NextResponse.json({ error: built.error }, { status: 400 });
+          job.eligible_programmes = built.rows as any;
+          job.eligibility = built.legacy; // keeps the department list used by older screens in step
+        } else if (body.eligibility !== undefined) {
           if (!Array.isArray(body.eligibility) || body.eligibility.length === 0) {
             return NextResponse.json({ error: 'Select at least one eligible programme.' }, { status: 400 });
           }

@@ -4,7 +4,8 @@ import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
 import Student from '@/lib/server/models/Student';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
-import { isStudentInEligibleProgramme } from '@/lib/server/jafEligibility';
+import Programme from '@/lib/server/models/Programme';
+import { ELIGIBILITY_STUDENT_FIELDS, evaluateJafEligibility, loadProgrammeIndex } from '@/lib/server/jafEligibility';
 
 export async function GET(
   req: NextRequest,
@@ -32,15 +33,18 @@ export async function GET(
           query.status = 'Approved';
           query.applicationDeadline = { $gt: new Date() };
         }
-        job = await Job.findOne(query).populate('companyId', 'company_name email website_url');
+        void Programme; // make sure the `programmes` model is registered for populate
+        job = await Job.findOne(query)
+          .populate('companyId', 'company_name email website_url')
+          .populate({ path: 'eligible_programmes.programme', select: 'programme discipline department major minor' });
 
         if (job && role === 'student') {
           if (!actor.rollNumber) job = null;
           else {
             const student = await Student.findOne({ roll_number: actor.rollNumber })
-              .select('academic_details')
+              .select(ELIGIBILITY_STUDENT_FIELDS)
               .lean();
-            if (!student || !isStudentInEligibleProgramme(job.toObject(), student)) job = null;
+            if (!student || !evaluateJafEligibility(job.toObject(), student, await loadProgrammeIndex()).eligible) job = null;
           }
         }
       } catch (dbErr) {

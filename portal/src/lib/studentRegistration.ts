@@ -24,6 +24,8 @@ export interface StudentRecord {
   mobile_home?: number;
   disability?: string;
   linkedin_url?: string;
+  google_scholar_link?: string;
+  arc_id?: string;
   flat_no?: string;
   address?: string;
   city?: string;

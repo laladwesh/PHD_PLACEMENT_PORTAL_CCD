@@ -68,6 +68,8 @@ const studentSchema = new Schema({
   mobile_home: Number,
   disability: String,
   linkedin_url: String,
+  google_scholar_link: String,
+  arc_id: String,
   flat_no: String,
   address: String,
   city: String,

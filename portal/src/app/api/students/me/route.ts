@@ -5,7 +5,7 @@ import Student from '@/lib/server/models/Student';
 
 const editableFields = new Set([
   'name', 'gender', 'dob', 'nationality', 'alt_email', 'mobile_campus',
-  'mobile_campus_alt', 'mobile_home', 'disability', 'linkedin_url', 'flat_no',
+  'mobile_campus_alt', 'mobile_home', 'disability', 'linkedin_url', 'google_scholar_link', 'arc_id', 'flat_no',
   'address', 'city', 'state', 'pincode', 'hostel', 'room_number', 'category',
   'entrance_examination', 'jee_ma_gate_rank', 'rank_category',
 ]);
@@ -14,6 +14,31 @@ const schoolingFields = new Set([
   'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'gap', 'reason_gap',
 ]);
 const linkFields = new Set(['drive_Link', 'portfolio_Link']);
+
+// Optional profile links. Blank clears the field; anything else must be a plain http(s) URL.
+const urlFields = new Set(['linkedin_url', 'google_scholar_link', 'cv.drive_Link', 'cv.portfolio_Link']);
+const maxLength: Record<string, number> = { arc_id: 60 };
+
+function validateOptionalFields(update: Record<string, unknown>): string | null {
+  for (const [key, raw] of Object.entries(update)) {
+    if (!urlFields.has(key) && !(key in maxLength)) continue;
+    if (raw === undefined || raw === null) { update[key] = ''; continue; }
+    if (typeof raw !== 'string') return `${key} must be text.`;
+    const value = raw.trim();
+    update[key] = value;
+    if (!value) continue;
+    if (value.length > (maxLength[key] ?? 300)) return `${key} is too long.`;
+    if (urlFields.has(key)) {
+      try {
+        const url = new URL(value);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return 'Links must start with http:// or https://';
+      } catch {
+        return 'Enter a valid link, for example https://scholar.google.com/...';
+      }
+    }
+  }
+  return null;
+}
 
 export async function GET() {
   const identity = await getPortalIdentity();
@@ -57,6 +82,9 @@ export async function PATCH(request: Request) {
         for (const [key, value] of Object.entries(cleanLinks)) update[`cv.${key}`] = value;
       }
     }
+
+    const invalid = validateOptionalFields(update);
+    if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
     if (!Object.keys(update).length) {
       return NextResponse.json({ error: 'No editable registration fields provided.' }, { status: 400 });

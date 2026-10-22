@@ -21,6 +21,13 @@ const termsAndConditions = [
   "CCD, IIT Guwahati, reserves the right to defer or cancel your recruitment drive and release the candidates blocked by final selection if any of these terms are not adhered to.",
 ];
 
+// Programmes work as in the placement portal: a programme is a (degree, discipline) pair that can be
+// held as a major and/or a minor, and each JAF sets, per programme, whether majors/minors are eligible
+// and the minimum CPI for each.
+type ProgrammeOption = { _id: string; programme: string; discipline?: string; department?: string; major: boolean; minor: boolean };
+type ProgrammeRule = { major: { allowed: boolean; cpi_cutoff: number }; minor: { allowed: boolean; cpi_cutoff: number } };
+const emptyRule = (): ProgrammeRule => ({ major: { allowed: false, cpi_cutoff: 0 }, minor: { allowed: false, cpi_cutoff: 0 } });
+
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
@@ -64,7 +71,9 @@ function JAFFormContent() {
 
   // Tab 2 - Eligibility
   const [programmeOptions, setProgrammeOptions] = useState<string[]>([]);
-  const [eligibility, setEligibility] = useState<Array<{ programme: string; selected: boolean; cpiCutoff: number }>>([]);
+  const [programmeRows, setProgrammeRows] = useState<ProgrammeOption[]>([]);
+  const [eligibleMap, setEligibleMap] = useState<Record<string, ProgrammeRule>>({});
+  const [openDegrees, setOpenDegrees] = useState<Record<string, boolean>>({});
   const [tenthPercentage, setTenthPercentage] = useState<number | ''>('');
   const [twelfthPercentage, setTwelfthPercentage] = useState<number | ''>('');
   const [bachelorsCPI, setBachelorsCPI] = useState<number | ''>('');
@@ -125,20 +134,16 @@ function JAFFormContent() {
   useEffect(() => {
     async function loadProgrammeOptions() {
       try {
-        const response = await fetch('/phdplacement/api/jaf/disciplines');
+        const response = await fetch('/phdplacement/api/programmes');
         if (!response.ok) throw new Error('Unable to load programme options');
         const data = await response.json();
-        const rawDisciplines: unknown[] = Array.isArray(data.data) ? data.data : [];
-        const names = rawDisciplines.reduce<string[]>((result, discipline) => {
-              const name = typeof discipline === 'object' && discipline !== null
-                ? (discipline as { name?: unknown }).name
-                : undefined;
-              if (typeof name === 'string') result.push(name);
-              return result;
-            }, []);
-        const uniqueNames = [...new Set(names)].sort((a, b) => a.localeCompare(b));
+        const rows: ProgrammeOption[] = Array.isArray(data.data)
+          ? data.data.filter((item: ProgrammeOption) => item && typeof item.programme === 'string' && typeof item._id === 'string')
+          : [];
+        setProgrammeRows(rows);
+        // Salary is still entered per discipline name.
+        const uniqueNames = [...new Set(rows.map((row) => row.discipline).filter((name): name is string => Boolean(name)))].sort((x, y) => x.localeCompare(y));
         setProgrammeOptions(uniqueNames);
-        setEligibility((current) => uniqueNames.map((programme) => current.find((item) => item.programme === programme) || ({ programme, selected: false, cpiCutoff: 0 })));
         setCompensations((current) => uniqueNames.map((programme) => current.find((item) => item.programme === programme) || ({ programme, ctc: 0, base: 0, monthlyFixed: 0 })));
       } catch (error) {
         console.error('Failed to load programme options', error);
@@ -197,18 +202,28 @@ function JAFFormContent() {
             }
             if (job.allowBacklog !== undefined) setAllowBacklog(job.allowBacklog);
 
-            if (job.eligibility && job.eligibility.length > 0) {
-              setEligibility((prev) => {
-                const updated = [...prev];
-                job.eligibility.forEach((e: any) => {
-                  const el = updated.find((item) => item.programme === e.department);
-                  if (el) {
-                    el.selected = true;
-                    el.cpiCutoff = e.cpiCutoff || 0;
-                  }
-                });
-                return updated;
+            if (Array.isArray(job.eligible_programmes) && job.eligible_programmes.length > 0) {
+              const loaded: Record<string, ProgrammeRule> = {};
+              job.eligible_programmes.forEach((row: any) => {
+                const id = row.programme && typeof row.programme === 'object' ? row.programme._id : row.programme;
+                if (!id) return;
+                loaded[String(id)] = {
+                  major: { allowed: Boolean(row.major?.allowed), cpi_cutoff: Number(row.major?.cpi_cutoff) || 0 },
+                  minor: { allowed: Boolean(row.minor?.allowed), cpi_cutoff: Number(row.minor?.cpi_cutoff) || 0 },
+                };
               });
+              setEligibleMap(loaded);
+            } else if (job.eligibility && job.eligibility.length > 0) {
+              // JAF saved before programmes existed: map its department list onto the matching major programmes.
+              const loaded: Record<string, ProgrammeRule> = {};
+              job.eligibility.forEach((e: any) => {
+                programmeRows
+                  .filter((row) => row.major && row.discipline === e.department)
+                  .forEach((row) => {
+                    loaded[row._id] = { major: { allowed: true, cpi_cutoff: e.cpiCutoff || 0 }, minor: { allowed: false, cpi_cutoff: 0 } };
+                  });
+              });
+              setEligibleMap(loaded);
             }
 
             if (job.salary) {
@@ -263,7 +278,9 @@ function JAFFormContent() {
         })
         .catch((err) => console.error('Failed to load JAF', err));
     }
-  }, [editId, programmeOptions]);
+  }, [editId, programmeOptions, programmeRows]);
+
+  const hasAnyEligible = Object.values(eligibleMap).some((rule) => rule.major.allowed || rule.minor.allowed);
 
   const tabOrder: TabKey[] = ['job', 'eligibility', 'salary', 'selection', 'bond', 'additional'];
 
@@ -316,7 +333,7 @@ function JAFFormContent() {
       if (descType === 'file' && !jobDescFile) return 'Job Description file is required';
       if (!placeOfPosting.trim()) return 'Place of Posting is required';
       if (!expectedRecruitments) return 'Expected number of Recruitments is required';
-    } else if (activeTab === 'eligibility' && !eligibility.some((item) => item.selected)) {
+    } else if (activeTab === 'eligibility' && !hasAnyEligible) {
       return 'Select at least one eligible programme';
     } else if (activeTab === 'salary') {
       if (!currency) return 'Currency is required';
@@ -349,10 +366,9 @@ function JAFFormContent() {
       });
     } else if (activeTab === 'eligibility') {
       await saveTabToBackend('eligibility', {
-        eligibility: eligibility.filter(e => e.selected).map(e => ({
-          department: e.programme,
-          cpiCutoff: e.cpiCutoff
-        })),
+        eligible_programmes: Object.entries(eligibleMap)
+          .filter(([, rule]) => rule.major.allowed || rule.minor.allowed)
+          .map(([programme, rule]) => ({ programme, major: rule.major, minor: rule.minor })),
         academicEligibility: {
           tenthPercentage: tenthPercentage ? Number(tenthPercentage) : undefined,
           twelfthPercentage: twelfthPercentage ? Number(twelfthPercentage) : undefined,
@@ -415,7 +431,7 @@ function JAFFormContent() {
 
   const applyToAllProgrammes = () => {
     setCompensations(compensations.map(c => {
-      const isEligible = eligibility.find(e => e.programme === c.programme)?.selected;
+      const isEligible = programmeRows.some((row) => row.discipline === c.programme && (eligibleMap[row._id]?.major.allowed || eligibleMap[row._id]?.minor.allowed));
       if (!isEligible) return c;
 
       return {
@@ -428,11 +444,51 @@ function JAFFormContent() {
     toast.success('Applied to eligible programmes.');
   };
 
-  const allProgrammesSelected = eligibility.length > 0 && eligibility.every((item) => item.selected);
+  const updateRule = (row: ProgrammeOption, kind: 'major' | 'minor', patch: Partial<ProgrammeRule['major']>) =>
+    setEligibleMap((current) => {
+      const rule = current[row._id] ?? emptyRule();
+      return { ...current, [row._id]: { ...rule, [kind]: { ...rule[kind], ...patch } } };
+    });
 
-  const toggleAllProgrammes = (selected: boolean) => {
-    setEligibility((current) => current.map((item) => ({ ...item, selected })));
-  };
+  // Allow/deny every major and minor a set of programmes offers.
+  const setAllowed = (rows: ProgrammeOption[], selected: boolean) =>
+    setEligibleMap((current) => {
+      const next = { ...current };
+      rows.forEach((row) => {
+        const rule = next[row._id] ?? emptyRule();
+        next[row._id] = {
+          major: { ...rule.major, allowed: selected && row.major },
+          minor: { ...rule.minor, allowed: selected && row.minor },
+        };
+      });
+      return next;
+    });
+
+  // Set one minimum CPI on every allowed major/minor of a set of programmes.
+  const setCutoff = (rows: ProgrammeOption[], cutoff: number) =>
+    setEligibleMap((current) => {
+      const next = { ...current };
+      rows.forEach((row) => {
+        const rule = next[row._id] ?? emptyRule();
+        next[row._id] = {
+          major: { ...rule.major, cpi_cutoff: rule.major.allowed ? cutoff : rule.major.cpi_cutoff },
+          minor: { ...rule.minor, cpi_cutoff: rule.minor.allowed ? cutoff : rule.minor.cpi_cutoff },
+        };
+      });
+      return next;
+    });
+
+  const allOffered = (rows: ProgrammeOption[]) =>
+    rows.some((row) => row.major || row.minor) &&
+    rows.every((row) => (!row.major || eligibleMap[row._id]?.major.allowed) && (!row.minor || eligibleMap[row._id]?.minor.allowed));
+
+  const allProgrammesSelected = allOffered(programmeRows);
+  const toggleAllProgrammes = (selected: boolean) => setAllowed(programmeRows, selected);
+
+  const degreeGroups = programmeRows.reduce<Record<string, ProgrammeOption[]>>((groups, row) => {
+    (groups[row.programme] ||= []).push(row);
+    return groups;
+  }, {});
 
   if (isCoordinator || isStudent) {
     return (
@@ -688,8 +744,8 @@ function JAFFormContent() {
             <hr className="border-gray-200" />
 
             <div>
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <p className="text-sm font-bold text-gray-900">Select eligible programmes and set CPI cutoff for the role</p>
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <p className="text-sm font-bold text-gray-900">Select eligible programmes and set the minimum CPI for majors and minors</p>
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer whitespace-nowrap">
                   <input
                     type="checkbox"
@@ -700,37 +756,122 @@ function JAFFormContent() {
                   Select all programmes
                 </label>
               </div>
-              <div className="space-y-4">
-                {eligibility.map((item, idx) => (
-                  <div key={item.programme} className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
-                      checked={item.selected}
-                      onChange={(e) => {
-                        const updated = [...eligibility];
-                        updated[idx].selected = e.target.checked;
-                        setEligibility(updated);
-                      }}
-                      className="w-4 h-4 accent-[#1B2A4A]"
-                    />
-                    <span className="text-sm text-gray-800 w-[300px]">{item.programme}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={item.cpiCutoff}
-                      disabled={!item.selected}
-                      onChange={(e) => {
-                        const updated = [...eligibility];
-                        updated[idx].cpiCutoff = Number(e.target.value);
-                        setEligibility(updated);
-                      }}
-                      className="w-[100px] p-2 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#1B2A4A] disabled:bg-gray-100 disabled:text-gray-400"
-                      placeholder="CPI"
-                    />
-                  </div>
-                ))}
-                {!programmeOptions.length && (
+              <p className="text-xs text-gray-500 mb-4">
+                Expand a degree to choose disciplines individually. A scholar qualifies when their major (or minor) programme is selected here and their CPI for it meets the minimum.
+              </p>
+              <div className="space-y-3">
+                {Object.entries(degreeGroups).map(([degree, rows]) => {
+                  const open = openDegrees[degree] ?? false;
+                  return (
+                    <div key={degree} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-slate-50">
+                        <button
+                          type="button"
+                          onClick={() => setOpenDegrees((current) => ({ ...current, [degree]: !open }))}
+                          className="flex items-center gap-2 text-sm font-semibold text-gray-900"
+                          aria-expanded={open}
+                        >
+                          <span className={`inline-block transition-transform ${open ? 'rotate-90' : ''}`}>&#9656;</span>
+                          {degree}
+                        </button>
+                        <span className="text-xs text-gray-500">{rows.length} discipline{rows.length === 1 ? '' : 's'}</span>
+                        <label className="ml-auto inline-flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={allOffered(rows)}
+                            onChange={(e) => setAllowed(rows, e.target.checked)}
+                            className="w-4 h-4 accent-[#1B2A4A]"
+                          />
+                          Select all offered disciplines
+                        </label>
+                        <label className="inline-flex items-center gap-2 text-xs text-gray-700">
+                          Minimum CPI for selected disciplines
+                          <input
+                            type="number"
+                            min={0}
+                            max={10}
+                            step="0.01"
+                            placeholder="0.00"
+                            onChange={(e) => setCutoff(rows, Number(e.target.value) || 0)}
+                            className="w-[80px] p-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#1B2A4A]"
+                          />
+                        </label>
+                      </div>
+                      {open && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-white border-y border-gray-200 text-gray-600 font-semibold">
+                              <tr>
+                                <th className="px-4 py-2">Department</th>
+                                <th className="px-4 py-2">Discipline</th>
+                                <th className="px-3 py-2 text-center">Major</th>
+                                <th className="px-3 py-2 text-center">Minimum CPI</th>
+                                <th className="px-3 py-2 text-center">Minor</th>
+                                <th className="px-3 py-2 text-center">Minimum CPI</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {rows.map((row) => {
+                                const rule = eligibleMap[row._id] ?? emptyRule();
+                                return (
+                                  <tr key={row._id}>
+                                    <td className="px-4 py-2 text-gray-800">{row.department}</td>
+                                    <td className="px-4 py-2 text-gray-800">{row.discipline}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={rule.major.allowed}
+                                        disabled={!row.major}
+                                        onChange={(e) => updateRule(row, 'major', { allowed: e.target.checked })}
+                                        className="w-4 h-4 accent-[#1B2A4A] disabled:opacity-40"
+                                        aria-label={`${row.discipline} as a major`}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={10}
+                                        step="0.01"
+                                        value={rule.major.cpi_cutoff}
+                                        disabled={!row.major || !rule.major.allowed}
+                                        onChange={(e) => updateRule(row, 'major', { cpi_cutoff: Number(e.target.value) || 0 })}
+                                        className="w-[80px] p-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#1B2A4A] disabled:bg-gray-100 disabled:text-gray-400"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={rule.minor.allowed}
+                                        disabled={!row.minor}
+                                        onChange={(e) => updateRule(row, 'minor', { allowed: e.target.checked })}
+                                        className="w-4 h-4 accent-[#1B2A4A] disabled:opacity-40"
+                                        aria-label={`${row.discipline} as a minor`}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={10}
+                                        step="0.01"
+                                        value={rule.minor.cpi_cutoff}
+                                        disabled={!row.minor || !rule.minor.allowed}
+                                        onChange={(e) => updateRule(row, 'minor', { cpi_cutoff: Number(e.target.value) || 0 })}
+                                        className="w-[80px] p-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#1B2A4A] disabled:bg-gray-100 disabled:text-gray-400"
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {!programmeRows.length && (
                   <p className="text-sm text-gray-500">Loading programme list…</p>
                 )}
               </div>
