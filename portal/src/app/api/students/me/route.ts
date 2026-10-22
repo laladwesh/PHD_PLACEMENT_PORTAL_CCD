@@ -12,7 +12,8 @@ const editableFields = new Set([
 const profileLinkFields = ['linkedin_url', 'portfolio_url', 'google_scholar_url', 'orcid_id'] as const;
 const schoolingFields = new Set([
   'x_percentage', 'x_pass_year', 'x_board', 'x_exam_medium', 'xii_percentage',
-  'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'gap', 'reason_gap',
+  'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'ug_major_discipline', 'ug_cpi',
+  'gap', 'reason_gap',
 ]);
 const linkFields = new Set(['drive_Link']);
 

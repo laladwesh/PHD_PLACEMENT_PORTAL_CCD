@@ -9,6 +9,8 @@ const schoolingSchema = new Schema({
   xii_pass_year: Number,
   xii_exam_board: String,
   xii_exam_medium: String,
+  ug_major_discipline: { type: String, trim: true },
+  ug_cpi: { type: Number, min: 0, max: 10 },
   gap: Number,
   reason_gap: String,
 }, { _id: false });

@@ -39,6 +39,8 @@ export interface StudentRecord {
     xii_pass_year?: number;
     xii_exam_board?: string;
     xii_exam_medium?: string;
+    ug_major_discipline?: string;
+    ug_cpi?: number;
     gap?: number;
     reason_gap?: string;
   };

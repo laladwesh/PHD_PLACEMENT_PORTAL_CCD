@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, Fragment, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useUserRole } from '@/lib/auth';
@@ -12,7 +12,7 @@ import {
 } from '@/lib/studentRegistration';
 
 type RegistrationStep = 'profile' | 'cv' | 'fee';
-type ProfileSection = 'Basic Information' | 'Address' | 'Profile Links' | 'Schooling' | 'Entrance Exam' | 'Academics' | 'CPI';
+type ProfileSection = 'Basic Information' | 'Address' | 'Profile Links' | 'Previous Education Details' | 'Entrance Exam' | 'Academics';
 type FieldDefinition = {
   label: string;
   path: string;
@@ -21,23 +21,23 @@ type FieldDefinition = {
   readOnly?: boolean;
   options?: string[];
   placeholder?: string;
+  heading?: string;
 };
 
 const sections: ProfileSection[] = [
   'Basic Information',
   'Address',
   'Profile Links',
-  'Schooling',
+  'Previous Education Details',
   'Entrance Exam',
   'Academics',
-  'CPI',
 ];
 
 const numericPaths = new Set([
   'roll_number', 'mobile_campus', 'mobile_campus_alt', 'mobile_home', 'pincode',
   'schooling.x_percentage', 'schooling.x_pass_year', 'schooling.xii_percentage',
   'schooling.xii_pass_year', 'schooling.gap', 'year_of_admission',
-  'backlogs', 'jee_ma_gate_rank', 'major_cpi',
+  'backlogs', 'jee_ma_gate_rank', 'major_cpi', 'schooling.ug_cpi',
 ]);
 
 const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
@@ -70,16 +70,18 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Google Scholar Profile', path: 'google_scholar_url', type: 'url', required: true, placeholder: 'https://scholar.google.com/...' },
     { label: 'ORCID iD', path: 'orcid_id', required: true, placeholder: '0000-0000-0000-0000' },
   ],
-  Schooling: [
-    { label: 'Class X percentage', path: 'schooling.x_percentage', type: 'number' },
+  'Previous Education Details': [
+    { label: 'Percentage', path: 'schooling.x_percentage', type: 'number', heading: 'Class X' },
     { label: 'Class X passing year', path: 'schooling.x_pass_year', type: 'number' },
     { label: 'Class X board', path: 'schooling.x_board' },
     { label: 'Class X exam medium', path: 'schooling.x_exam_medium' },
-    { label: 'Class XII percentage', path: 'schooling.xii_percentage', type: 'number' },
+    { label: 'Percentage', path: 'schooling.xii_percentage', type: 'number', heading: 'Class XII' },
     { label: 'Class XII passing year', path: 'schooling.xii_pass_year', type: 'number' },
     { label: 'Class XII board', path: 'schooling.xii_exam_board' },
     { label: 'Class XII exam medium', path: 'schooling.xii_exam_medium' },
-    { label: 'Education gap (years)', path: 'schooling.gap', type: 'number' },
+    { label: 'Major Discipline', path: 'schooling.ug_major_discipline', required: true, heading: 'Undergraduate' },
+    { label: 'CPI', path: 'schooling.ug_cpi', type: 'number', required: true },
+    { label: 'Education gap (years)', path: 'schooling.gap', type: 'number', heading: 'Other information' },
     { label: 'Reason for gap', path: 'schooling.reason_gap', type: 'textarea' },
   ],
   'Entrance Exam': [
@@ -88,7 +90,6 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Rank category', path: 'rank_category' },
   ],
   Academics: [],
-  CPI: [],
 };
 
 const academicFields = [
@@ -98,10 +99,6 @@ const academicFields = [
   { label: 'Major CPI', path: 'major_cpi' },
   { label: 'Major Programme', path: 'academic_details.major_programme' },
   { label: 'Major Discipline', path: 'academic_details.major_discipline' },
-];
-
-const cpiFields = [
-  { label: 'Major CPI', path: 'major_cpi' },
 ];
 
 function emptyStudentRecord(): StudentRecord {
@@ -181,7 +178,9 @@ function FieldGrid({
   return (
     <div className="grid grid-cols-1 gap-x-10 gap-y-5 md:grid-cols-2">
       {fields.map((field) => (
-        <label key={field.path} className={`block ${field.type === 'textarea' ? 'md:col-span-2' : ''}`}>
+        <Fragment key={field.path}>
+          {field.heading && <h3 className="-mb-1 mt-2 text-base font-bold text-[#172b4d] md:col-span-2">{field.heading}</h3>}
+          <label className={`block ${field.type === 'textarea' ? 'md:col-span-2' : ''}`}>
           <span className="mb-1.5 block text-sm font-semibold text-slate-800">
             {field.label}{field.required && <span className="ml-1 text-red-500">*</span>}
           </span>
@@ -219,7 +218,8 @@ function FieldGrid({
               className="h-10 w-full rounded border border-slate-400 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15 read-only:bg-slate-100"
             />
           )}
-        </label>
+          </label>
+        </Fragment>
       ))}
     </div>
   );
@@ -310,8 +310,6 @@ function ProfileRegistration() {
           </div>
           {section === 'Academics' ? (
             <ReadOnlyGrid student={student} fields={academicFields} />
-          ) : section === 'CPI' ? (
-            <ReadOnlyGrid student={student} fields={cpiFields} />
           ) : (
             <FieldGrid fields={fieldsBySection[section]} student={student} onChange={handleChange} />
           )}
@@ -326,7 +324,7 @@ function ProfileRegistration() {
               >
                 Previous
               </button>
-              {section !== 'Academics' && section !== 'CPI' && (
+              {section !== 'Academics' && (
                 <button type="submit" className="rounded bg-[#1b2a4a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#263b60]">
                   Save section
                 </button>
