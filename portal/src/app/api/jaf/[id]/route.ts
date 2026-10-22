@@ -5,7 +5,7 @@ import Job from '@/lib/server/models/Job';
 import Student from '@/lib/server/models/Student';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 import Programme from '@/lib/server/models/Programme';
-import { ELIGIBILITY_STUDENT_FIELDS, evaluateJafEligibility, loadProgrammeIndex } from '@/lib/server/jafEligibility';
+import { ELIGIBILITY_STUDENT_FIELDS, evaluateJafEligibility } from '@/lib/server/jafEligibility';
 
 export async function GET(
   req: NextRequest,
@@ -44,7 +44,7 @@ export async function GET(
             const student = await Student.findOne({ roll_number: actor.rollNumber })
               .select(ELIGIBILITY_STUDENT_FIELDS)
               .lean();
-            if (!student || !evaluateJafEligibility(job.toObject(), student, await loadProgrammeIndex()).eligible) job = null;
+            if (!student || !evaluateJafEligibility(job.toObject(), student).eligible) job = null;
           }
         }
       } catch (dbErr) {

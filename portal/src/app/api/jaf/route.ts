@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/server/mongodb';
 import Job from '@/lib/server/models/Job';
 import Student from '@/lib/server/models/Student';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
-import { ELIGIBILITY_STUDENT_FIELDS, evaluateJafEligibility, loadProgrammeIndex } from '@/lib/server/jafEligibility';
+import { ELIGIBILITY_STUDENT_FIELDS, evaluateJafEligibility } from '@/lib/server/jafEligibility';
 
 export async function GET() {
   const actor = await requireRole('coordinator', 'company', 'student');
@@ -34,12 +34,11 @@ export async function GET() {
       if (!student) {
         return NextResponse.json({ jobs: [] });
       }
-      const programmeIndex = await loadProgrammeIndex();
 
       const approvedJobs = await Job.find({ status: 'Approved', applicationDeadline: { $gt: new Date() } })
         .populate('companyId', 'company_name email website_url')
         .sort({ createdAt: -1 });
-      jobs = approvedJobs.filter((job) => evaluateJafEligibility(job.toObject(), student, programmeIndex).eligible);
+      jobs = approvedJobs.filter((job) => evaluateJafEligibility(job.toObject(), student).eligible);
     } else {
       jobs = await Job.find({ status: 'Approved' }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
     }

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import Programme from '@/lib/server/models/Programme';
-import { ensureProgrammes } from '@/lib/server/seedProgrammes';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 export async function GET() {
   const actor = await requireRole('coordinator', 'company', 'student');
   if (isAuthorizationError(actor)) return actor;
   try {
-    await ensureProgrammes();
+    await connectToDatabase();
     const programmes = await Programme.find({}).sort({ programme: 1, discipline: 1 }).lean();
     return NextResponse.json({ status: 'success', data: programmes });
   } catch (error) {

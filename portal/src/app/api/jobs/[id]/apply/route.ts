@@ -6,7 +6,7 @@ import { Jobs } from '@/models';
 import Student from '@/lib/server/models/Student';
 import { getPortalIdentity } from '@/lib/server/identity';
 import { getOrCreateStudent } from '@/lib/server/studentRepository';
-import { evaluateJafEligibility, loadProgrammeIndex } from '@/lib/server/jafEligibility';
+import { evaluateJafEligibility } from '@/lib/server/jafEligibility';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const student = await getOrCreateStudent(identity);
 
     if (student) {
-      const eligibility = evaluateJafEligibility(openJob, student, await loadProgrammeIndex());
+      const eligibility = evaluateJafEligibility(openJob, student);
       if (!eligibility.eligible) {
         return NextResponse.json(
           { error: `You are not eligible for this role. ${eligibility.reasons.join(' ')}`, reasons: eligibility.reasons },

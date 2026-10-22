@@ -72,6 +72,7 @@ function JAFFormContent() {
   // Tab 2 - Eligibility
   const [programmeOptions, setProgrammeOptions] = useState<string[]>([]);
   const [programmeRows, setProgrammeRows] = useState<ProgrammeOption[]>([]);
+  const [programmesLoaded, setProgrammesLoaded] = useState(false);
   const [eligibleMap, setEligibleMap] = useState<Record<string, ProgrammeRule>>({});
   const [openDegrees, setOpenDegrees] = useState<Record<string, boolean>>({});
   const [tenthPercentage, setTenthPercentage] = useState<number | ''>('');
@@ -141,6 +142,7 @@ function JAFFormContent() {
           ? data.data.filter((item: ProgrammeOption) => item && typeof item.programme === 'string' && typeof item._id === 'string')
           : [];
         setProgrammeRows(rows);
+        setProgrammesLoaded(true);
         // Salary is still entered per discipline name.
         const uniqueNames = [...new Set(rows.map((row) => row.discipline).filter((name): name is string => Boolean(name)))].sort((x, y) => x.localeCompare(y));
         setProgrammeOptions(uniqueNames);
@@ -872,7 +874,9 @@ function JAFFormContent() {
                   );
                 })}
                 {!programmeRows.length && (
-                  <p className="text-sm text-gray-500">Loading programme list…</p>
+                  <p className="text-sm text-gray-500">
+                    {programmesLoaded ? 'No programmes have been set up yet. Please contact CCD.' : 'Loading programme list…'}
+                  </p>
                 )}
               </div>
             </div>
