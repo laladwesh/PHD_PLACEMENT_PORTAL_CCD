@@ -63,6 +63,7 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'LinkedIn Profile', path: 'linkedin_url', type: 'url', placeholder: 'https://www.linkedin.com/in/...' },
     { label: 'Portfolio', path: 'cv.portfolio_Link', type: 'url', placeholder: 'https://...' },
     { label: 'ARC ID', path: 'arc_id', placeholder: 'Optional' },
+    { label: 'Google Drive Folder Link (publications & proofs)', path: 'cv.drive_Link', type: 'url', placeholder: 'https://drive.google.com/drive/folders/...' },
   ],
   Address: [
     { label: 'Flat / house number', path: 'flat_no' },
@@ -535,7 +536,10 @@ function CvRegistration() {
         <section className="bg-white p-5 shadow-sm sm:px-7">
           <h2 className="mb-4 font-bold text-[#172b4d]">Additional links</h2>
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-semibold text-slate-800">Google Drive link for CV verification
+            <label className="text-sm font-semibold text-slate-800 md:col-span-2">Google Drive folder link (publications &amp; proofs)
+              <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                Optional. Share one folder and keep adding your latest publications and proof documents to it. Make sure anyone with the link can view it. You can change this link at any time.
+              </span>
               <input type="url" value={student.cv.drive_Link ?? ''} onChange={(event) => setStudent((current) => ({ ...current, cv: { ...current.cv, drive_Link: event.target.value } }))} placeholder="https://drive.google.com/..." className="mt-1.5 h-10 w-full rounded border border-slate-400 px-3 font-normal outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
             </label>
             <label className="text-sm font-semibold text-slate-800">Portfolio link
