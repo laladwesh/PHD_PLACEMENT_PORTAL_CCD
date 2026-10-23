@@ -5,6 +5,12 @@ import Student from '@/lib/server/models/Student';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 import { ELIGIBILITY_STUDENT_FIELDS, evaluateJafEligibility } from '@/lib/server/jafEligibility';
 
+function currentStatus(status: unknown) {
+  if (status === 'Changes Requested') return 'Unapproved';
+  if (status === 'Complete') return 'Incomplete';
+  return status;
+}
+
 export async function GET() {
   const actor = await requireRole('coordinator', 'company', 'student');
   if (isAuthorizationError(actor)) return actor;
@@ -29,28 +35,47 @@ export async function GET() {
       }
 
       const student = await Student.findOne({ roll_number: actor.rollNumber })
-        .select(ELIGIBILITY_STUDENT_FIELDS)
+        .select(`${ELIGIBILITY_STUDENT_FIELDS} jobs_applied`)
         .lean();
       if (!student) {
         return NextResponse.json({ jobs: [] });
       }
 
-      const approvedJobs = await Job.find({ status: 'Approved', applicationDeadline: { $gt: new Date() } })
+      const appliedJobIds = (student.jobs_applied || []).map((application: { job?: unknown }) => application.job);
+      const approvedJobs = await Job.find({
+        status: 'Approved',
+        $or: [
+          { applicationDeadline: { $gt: new Date() } },
+          { _id: { $in: appliedJobIds } },
+        ],
+      })
         .populate('companyId', 'company_name email website_url')
         .sort({ createdAt: -1 });
-      jobs = approvedJobs.filter((job) => evaluateJafEligibility(job.toObject(), student).eligible);
+      const appliedJobIdSet = new Set(appliedJobIds.map(String));
+      jobs = approvedJobs.filter((job) =>
+        appliedJobIdSet.has(String(job._id)) || evaluateJafEligibility(job.toObject(), student).eligible,
+      );
+
+      const enrichedJobs = jobs.map((job) => {
+        const doc = job.toObject ? job.toObject() : { ...job };
+        const companyObj = doc.companyId && typeof doc.companyId === 'object' ? doc.companyId : null;
+        delete doc.numOpenings;
+        return { ...doc, status: currentStatus(doc.status), company: companyObj?.company_name || doc.companyName || 'Company' };
+      });
+      return NextResponse.json({ jobs: enrichedJobs, appliedJobIds: [...appliedJobIdSet] });
     } else {
       jobs = await Job.find({ status: 'Approved' }).populate('companyId', 'company_name email website_url').sort({ createdAt: -1 });
     }
 
 
 
-    // Attach company name to each job object for frontend mapping
+    // Attach company name to each job object for frontend mapping.
     const enrichedJobs = jobs.map((j) => {
       const doc = j.toObject ? j.toObject() : { ...j };
       const companyObj = doc.companyId && typeof doc.companyId === 'object' ? doc.companyId : null;
       return {
         ...doc,
+        status: currentStatus(doc.status),
         company: companyObj?.company_name || doc.companyName || 'Company',
       };
     });

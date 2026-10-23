@@ -31,6 +31,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
+    if (role === 'company' && job.status === 'Approved') {
+      return NextResponse.json({ error: 'Approved JAFs can only be edited by a coordinator.' }, { status: 409 });
+    }
+
+    // Legacy records used this retired status. Saving them now brings them into
+    // the current workflow without exposing a fifth status in the UI.
+    if ((job.status as string) === 'Changes Requested') job.status = 'Unapproved';
+
     // Update specific section based on tabName
     switch (tabName) {
       case 'job-details':
@@ -94,7 +102,7 @@ export async function PUT(
         if (body.additionalRequirements !== undefined) job.additionalRequirements = body.additionalRequirements;
         if (body.agreedToTerms !== undefined) {
           job.agreedToTerms = body.agreedToTerms;
-          if (body.agreedToTerms === true) {
+          if (role === 'company' && body.agreedToTerms === true && job.status !== 'Approved') {
             job.status = 'Unapproved';
           }
         }

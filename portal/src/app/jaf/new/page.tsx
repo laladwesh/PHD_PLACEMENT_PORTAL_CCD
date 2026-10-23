@@ -492,7 +492,7 @@ function JAFFormContent() {
     return groups;
   }, {});
 
-  if (isCoordinator || isStudent) {
+  if (isStudent || (isCoordinator && !editId)) {
     return (
       <DashboardLayout>
         <div className="bg-white p-8 rounded-xl border border-gray-200/80 text-center max-w-xl mx-auto my-12 shadow-xs">
@@ -506,7 +506,7 @@ function JAFFormContent() {
           </h2>
           <p className="text-xs text-gray-500 mb-5 leading-relaxed">
             {isCoordinator
-              ? 'Job Application Forms (JAFs) are submitted directly by recruiting organizations. Placement coordinators review, moderate, and approve JAFs from the Job Applications console.'
+              ? 'Job Application Forms (JAFs) are submitted directly by recruiting organizations. Open an existing JAF from the Job Applications console to edit it.'
               : 'Job application forms are not accessible in the scholar portal.'}
           </p>
           <button

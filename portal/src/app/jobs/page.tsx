@@ -5,11 +5,8 @@ import Link from 'next/link';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useUserRole } from '@/lib/auth';
 import { DetailedJAF, JAFStatus } from '@/lib/types';
-import { JAFReviewModal } from '@/components/coordinator/JAFReviewModal';
-import { EditJAFModal } from '@/components/coordinator/EditJAFModal';
-import { toast } from '@/components/ui/Toast';
 
-type TabKey = 'all' | 'unapproved' | 'changes' | 'approved' | 'incomplete' | 'eligible' | 'applied';
+type TabKey = 'all' | 'unapproved' | 'approved' | 'incomplete' | 'rejected' | 'eligible' | 'applied';
 
 export default function JobsPage() {
   const { isCoordinator, isStudent, isCompany, profile } = useUserRole();
@@ -18,13 +15,10 @@ export default function JobsPage() {
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [search, setSearch] = useState('');
-  const [reviewJaf, setReviewJaf] = useState<DetailedJAF | null>(null);
-  const [editJaf, setEditJaf] = useState<DetailedJAF | null>(null);
 
   const studentTabs: { key: TabKey; label: string }[] = [
-    { key: 'all', label: 'All Approved Drives' },
-    { key: 'eligible', label: 'Eligible for Me' },
-    { key: 'applied', label: 'My Applications' },
+    { key: 'eligible', label: 'Eligible Applications' },
+    { key: 'applied', label: 'Applied Applications' },
   ];
 
   const companyTabs: { key: TabKey; label: string }[] = [
@@ -36,25 +30,26 @@ export default function JobsPage() {
   const coordinatorTabs: { key: TabKey; label: string }[] = [
     { key: 'all', label: 'All Jobs' },
     { key: 'unapproved', label: 'Unapproved Jobs' },
-    { key: 'changes', label: 'Changes Requested' },
+    { key: 'incomplete', label: 'Incomplete JAFs' },
     { key: 'approved', label: 'Approved Jobs' },
+    { key: 'rejected', label: 'Rejected Jobs' },
   ];
 
   const tabs = isStudent ? studentTabs : isCompany ? companyTabs : coordinatorTabs;
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('applied_jaf_ids');
-      if (stored) {
-        setAppliedJobIds(new Set(JSON.parse(stored)));
-      }
-    } catch {}
+    setActiveTab(isStudent ? 'eligible' : 'all');
+  }, [isStudent]);
 
+  useEffect(() => {
     async function fetchJobs() {
       try {
         const res = await fetch('/phdplacement/api/jaf');
         if (res.ok) {
           const data = await res.json();
+          if (isStudent) {
+            setAppliedJobIds(new Set(Array.isArray(data.appliedJobIds) ? data.appliedJobIds.map(String) : []));
+          }
           const mappedJobs = data.jobs.map((j: any) => ({
             id: j._id,
             company: j.company || j.companyId?.company_name || profile.name,
@@ -102,110 +97,15 @@ export default function JobsPage() {
     fetchJobs();
   }, [isCompany, isCoordinator, isStudent, profile.name]);
 
-  const handleApprove = async (id: number | string, applicationDeadline: string) => {
-    try {
-      const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve', applicationDeadline }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        toast.error(payload.error || 'Unable to approve this JAF.');
-        return;
-      }
-      const closingDate = new Date(`${applicationDeadline}T23:59:59`).toLocaleDateString();
-      setJobs((prev) =>
-        prev.map((job) => (job.id === id ? { ...job, status: 'Approved' as JAFStatus, deadline: closingDate, feedback: undefined } : job))
-      );
-      if (reviewJaf?.id === id) {
-        setReviewJaf((prev) => (prev ? { ...prev, status: 'Approved', deadline: closingDate, feedback: undefined } : null));
-      }
-      toast.success(`Job Application #${id} approved successfully.`);
-    } catch {
-      toast.error('Unable to approve this JAF.');
-    }
-  };
-
-  const handleRequestChanges = async (id: number | string, feedback: string) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === id ? { ...job, status: 'Changes Requested' as JAFStatus, feedback } : job
-      )
-    );
-    if (reviewJaf?.id === id) {
-      setReviewJaf((prev) => (prev ? { ...prev, status: 'Changes Requested', feedback } : null));
-    }
-    toast.info(`Revision request sent to recruiter for #${id}.`);
-    try {
-      const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'request_changes', feedback }),
-      });
-      if (!response.ok) throw new Error('Unable to request changes.');
-    } catch {
-      // Ignored
-    }
-  };
-
-  const handleReject = async (id: number | string, reason: string) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === id ? { ...job, status: 'Rejected' as JAFStatus, feedback: reason } : job
-      )
-    );
-    setReviewJaf(null);
-    toast.error(`Job Application #${id} rejected.`);
-    try {
-      const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject', feedback: reason }),
-      });
-      if (!response.ok) throw new Error('Unable to reject this JAF.');
-    } catch {
-      // Ignored
-    }
-  };
-
-  const handleSaveJaf = async (updated: DetailedJAF) => {
-    setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
-    if (reviewJaf?.id === updated.id) {
-      setReviewJaf(updated);
-    }
-    setEditJaf(null);
-    toast.success(`Job application #${updated.id} (${updated.designation}) updated successfully.`);
-
-    try {
-      await fetch(`/phdplacement/api/jobs/${updated.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job_designation: updated.designation,
-          place_of_posting: updated.placeOfPosting,
-          num_openings: updated.expectedRecruitments,
-          job_description: updated.description,
-          status: updated.status,
-          feedback: updated.feedback,
-          'salary.additional': updated.salary?.additionalInfo || updated.salary?.ctc,
-        }),
-      });
-    } catch {
-      // Ignored
-    }
-  };
-
   const filteredJobs = jobs.filter((job) => {
     if (isStudent) {
-      if (activeTab === 'all' && job.status !== 'Approved') return false;
       if (activeTab === 'eligible' && job.status !== 'Approved') return false;
       if (activeTab === 'applied' && !appliedJobIds.has(String(job.id))) return false;
     } else {
       if (activeTab === 'unapproved' && job.status !== 'Unapproved') return false;
-      if (activeTab === 'changes' && job.status !== 'Changes Requested') return false;
       if (activeTab === 'approved' && job.status !== 'Approved') return false;
       if (activeTab === 'incomplete' && job.status !== 'Incomplete') return false;
+      if (activeTab === 'rejected' && job.status !== 'Rejected') return false;
     }
     if (search) {
       const q = search.toLowerCase();
@@ -220,7 +120,6 @@ export default function JobsPage() {
 
   const statusColor = (status: JAFStatus) => {
     if (status === 'Unapproved') return 'text-[#f59e0b]';
-    if (status === 'Changes Requested') return 'text-blue-600';
     if (status === 'Incomplete') return 'text-[#ef4444]';
     if (status === 'Approved') return 'text-green-600';
     if (status === 'Rejected') return 'text-red-500';
@@ -229,26 +128,16 @@ export default function JobsPage() {
 
   if (isStudent) {
     const totalApplied = appliedJobIds.size;
-    const totalOpen = jobs.filter((j) => j.status === 'Approved').length;
 
     return (
       <DashboardLayout>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+        <div className="mb-2">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Job Applications & Drives</h1>
             <p className="text-xs text-gray-500 mt-1">
-              Browse approved PhD recruitment drives, check role details and compensation, and submit applications.
+              Browse eligible PhD recruitment drives, check role details and compensation, and submit applications.
             </p>
-          </div>
-          <div className="flex items-center gap-3 text-xs bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-2xs self-start sm:self-auto">
-            <span className="text-gray-500">
-              Open Drives: <strong className="text-[#1B2A4A] font-bold">{totalOpen}</strong>
-            </span>
-            <span className="text-gray-300">|</span>
-            <span className="text-gray-500">
-              Applied: <strong className="text-emerald-700 font-bold">{totalApplied}</strong>
-            </span>
           </div>
         </div>
 
@@ -478,30 +367,34 @@ export default function JobsPage() {
                           >
                             Details
                           </Link>
-                          <span className="text-gray-300">|</span>
-                          <Link
-                            href={`/jaf/new?edit=${job.id}`}
-                            className="text-gray-600 hover:text-black hover:underline font-medium"
-                          >
-                            Edit
-                          </Link>
+                          {job.status !== 'Approved' && (
+                            <>
+                              <span className="text-gray-300">|</span>
+                              <Link
+                                href={`/jaf/new?edit=${job.id}`}
+                                className="text-gray-600 hover:text-black hover:underline font-medium"
+                              >
+                                Edit
+                              </Link>
+                            </>
+                          )}
                         </div>
                       )
                     ) : (
                       <div className="flex items-center gap-2 text-xs">
-                        <button
-                          onClick={() => setReviewJaf(job)}
-                          className="text-blue-600 hover:underline cursor-pointer font-medium"
+                        <Link
+                          href={`/jaf/${job.id}/details`}
+                          className="text-blue-600 hover:underline font-medium"
                         >
                           Inspect
-                        </button>
+                        </Link>
                         <span className="text-gray-300">|</span>
-                        <button
-                          onClick={() => setEditJaf(job)}
-                          className="text-gray-600 hover:text-[#1B2A4A] hover:underline cursor-pointer font-medium"
+                        <Link
+                          href={`/jaf/new?edit=${job.id}`}
+                          className="text-gray-600 hover:text-[#1B2A4A] hover:underline font-medium"
                         >
                           Edit
-                        </button>
+                        </Link>
                       </div>
                     )}
                   </td>
@@ -524,14 +417,6 @@ export default function JobsPage() {
                       )
                     ) : (
                       <div className="flex items-center justify-end gap-2">
-                        {isCoordinator && job.status === 'Unapproved' && (
-                          <button
-                            onClick={() => setReviewJaf(job)}
-                            className="bg-[#1B2A4A] text-white text-xs px-2.5 py-1 rounded-md hover:bg-[#2D3F5E] transition-colors whitespace-nowrap font-medium cursor-pointer"
-                          >
-                            Approve
-                          </button>
-                        )}
                         <Link
                           href={`/jaf/${job.id}/applicants`}
                           className="border border-gray-300 text-gray-700 text-xs px-2.5 py-1 rounded-md hover:bg-gray-50 transition-colors whitespace-nowrap font-medium inline-block cursor-pointer"
@@ -563,24 +448,6 @@ export default function JobsPage() {
         </div>
       )}
 
-      {/* JAF Review & Moderation Modal */}
-      <JAFReviewModal
-        jaf={reviewJaf}
-        isOpen={!!reviewJaf}
-        onClose={() => setReviewJaf(null)}
-        onApprove={handleApprove}
-        onRequestChanges={handleRequestChanges}
-        onReject={handleReject}
-        onEdit={(jaf) => setEditJaf(jaf)}
-      />
-
-      {/* Edit JAF Modal */}
-      <EditJAFModal
-        jaf={editJaf}
-        isOpen={!!editJaf}
-        onClose={() => setEditJaf(null)}
-        onSave={handleSaveJaf}
-      />
     </DashboardLayout>
   );
 }

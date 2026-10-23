@@ -303,7 +303,7 @@ const jobSchema = new Schema(
     status: {
       type: String,
       enum: {
-        values: ['Complete', 'Incomplete', 'Approved', 'Unapproved', 'Changes Requested', 'Rejected'],
+        values: ['Incomplete', 'Approved', 'Unapproved', 'Rejected'],
         message: '{VALUE} is not supported in type field',
       },
       default: 'Incomplete',

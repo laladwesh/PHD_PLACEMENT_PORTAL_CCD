@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Jobs } from '@/models';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
-const statuses = new Set(['Complete', 'Incomplete', 'Approved', 'Unapproved', 'Changes Requested', 'Rejected']);
+const statuses = new Set(['Incomplete', 'Approved', 'Unapproved', 'Rejected']);
 
 function jobDto(job: any) {
   const company = job.company && typeof job.company === 'object' ? job.company : null;

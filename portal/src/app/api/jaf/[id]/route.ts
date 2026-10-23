@@ -24,14 +24,24 @@ export async function GET(
       try {
         await connectToDatabase();
         let query: Record<string, any> = { _id: id };
+        let student: any = null;
         if (role === 'company') {
           if (!companyId) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
           query.companyId = companyId;
         }
         // Students only ever see approved JAFs for their own programme.
         if (role === 'student') {
+          if (!actor.rollNumber) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+          student = await Student.findOne({ roll_number: actor.rollNumber })
+            .select(`${ELIGIBILITY_STUDENT_FIELDS} jobs_applied`)
+            .lean();
+          if (!student) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+          const appliedJobIds = (student.jobs_applied || []).map((application: { job?: unknown }) => application.job);
           query.status = 'Approved';
-          query.applicationDeadline = { $gt: new Date() };
+          query.$or = [
+            { applicationDeadline: { $gt: new Date() } },
+            { _id: { $in: appliedJobIds } },
+          ];
         }
         void Programme; // make sure the `programmes` model is registered for populate
         job = await Job.findOne(query)
@@ -39,13 +49,10 @@ export async function GET(
           .populate({ path: 'eligible_programmes.programme', select: 'programme discipline department major minor' });
 
         if (job && role === 'student') {
-          if (!actor.rollNumber) job = null;
-          else {
-            const student = await Student.findOne({ roll_number: actor.rollNumber })
-              .select(ELIGIBILITY_STUDENT_FIELDS)
-              .lean();
-            if (!student || !evaluateJafEligibility(job.toObject(), student).eligible) job = null;
-          }
+          const hasApplied = (student.jobs_applied || []).some(
+            (application: { job?: unknown }) => String(application.job) === String(job._id),
+          );
+          if (!hasApplied && !evaluateJafEligibility(job.toObject(), student).eligible) job = null;
         }
       } catch (dbErr) {
         console.warn('DB error fetching job:', dbErr);
@@ -55,6 +62,9 @@ export async function GET(
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
+
+    if (job.status === 'Changes Requested') job.status = 'Unapproved';
+    if (job.status === 'Complete') job.status = 'Incomplete';
 
     const jobResponse = job.toObject();
     // Intake targets are internal recruitment information and are not disclosed to students.

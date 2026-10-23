@@ -35,19 +35,12 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [selectedCv, setSelectedCv] = useState<'cv1' | 'cv2' | 'cv3'>('cv1');
   const [submitting, setSubmitting] = useState(false);
+  const [reviewMode, setReviewMode] = useState<'approve' | 'reject' | null>(null);
+  const [applicationDeadline, setApplicationDeadline] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
-    // Check local storage for existing application
-    try {
-      const stored = localStorage.getItem('applied_jaf_ids');
-      if (stored) {
-        const idList: string[] = JSON.parse(stored);
-        if (idList.includes(String(id))) {
-          setHasApplied(true);
-        }
-      }
-    } catch {}
-
     async function fetchJob() {
       try {
         const res = await fetch(`/phdplacement/api/jaf/${id}`);
@@ -67,8 +60,22 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       }
     }
 
+    async function fetchApplicationStatus() {
+      if (!isStudent) return;
+      try {
+        const response = await fetch(`/phdplacement/api/jobs/${id}/apply`);
+        if (response.ok) {
+          const data = await response.json();
+          setHasApplied(Boolean(data.hasApplied));
+        }
+      } catch {
+        // The job details still load if the application-status check is unavailable.
+      }
+    }
+
     fetchJob();
-  }, [id]);
+    fetchApplicationStatus();
+  }, [id, isStudent]);
 
   const handleConfirmApplication = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,16 +90,6 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to submit your application.');
-
-      // Save locally
-      try {
-        const stored = localStorage.getItem('applied_jaf_ids');
-        const list: string[] = stored ? JSON.parse(stored) : [];
-        if (!list.includes(String(id))) {
-          list.push(String(id));
-          localStorage.setItem('applied_jaf_ids', JSON.stringify(list));
-        }
-      } catch {}
 
       setHasApplied(true);
       setShowApplyModal(false);
@@ -116,16 +113,47 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       return;
     }
 
-    try {
-      const stored = localStorage.getItem('applied_jaf_ids');
-      if (stored) {
-        const list: string[] = JSON.parse(stored).filter((item: string) => item !== String(id));
-        localStorage.setItem('applied_jaf_ids', JSON.stringify(list));
-      }
-    } catch {}
-
     setHasApplied(false);
     toast.info('Your application has been withdrawn.');
+  };
+
+  const submitReview = async (action: 'approve' | 'reject') => {
+    if (action === 'approve' && !applicationDeadline) {
+      toast.error('Set an application closing date before approving this JAF.');
+      return;
+    }
+    if (action === 'reject' && !rejectionReason.trim()) {
+      toast.error('Provide a reason before rejecting this JAF.');
+      return;
+    }
+
+    setReviewing(true);
+    try {
+      const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          applicationDeadline: action === 'approve' ? applicationDeadline : undefined,
+          feedback: action === 'reject' ? rejectionReason.trim() : undefined,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Unable to update this JAF.');
+
+      setJob((current: any) => ({
+        ...current,
+        status: action === 'approve' ? 'Approved' : 'Rejected',
+        applicationDeadline: action === 'approve' ? result.data?.applicationDeadline || applicationDeadline : current.applicationDeadline,
+        feedback: action === 'reject' ? rejectionReason.trim() : '',
+      }));
+      setReviewMode(null);
+      toast.success(action === 'approve' ? 'JAF approved and opened for applications.' : 'JAF rejected.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update this JAF.');
+    } finally {
+      setReviewing(false);
+    }
   };
 
   if (loading) {
@@ -187,14 +215,23 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
         </Link>
         <div className="flex items-center gap-2">
           {isCoordinator && (
-            <Link
-              href={`/jaf/${id}/applicants`}
-              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1B2A4A] rounded-md hover:bg-[#2D3F5E] transition-colors shadow-2xs"
-            >
-              Registered Candidates &rarr;
-            </Link>
+            <>
+              <Link
+                href={`/jaf/new?edit=${id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors shadow-2xs"
+              >
+                <PencilIcon className="h-3.5 w-3.5" />
+                Edit JAF
+              </Link>
+              <Link
+                href={`/jaf/${id}/applicants`}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1B2A4A] rounded-md hover:bg-[#2D3F5E] transition-colors shadow-2xs"
+              >
+                Registered Candidates &rarr;
+              </Link>
+            </>
           )}
-          {isCompany && (
+          {isCompany && job.status !== 'Approved' && (
             <Link
               href={`/jaf/new?edit=${id}`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors shadow-2xs"
@@ -246,6 +283,45 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         </div>
+
+        {isCoordinator && job.status !== 'Approved' && job.status !== 'Rejected' && (
+          <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            {reviewMode === null ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Coordinator review</h2>
+                  <p className="mt-0.5 text-xs text-gray-600">Set the closing date when approving, or reject the JAF with a reason.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setReviewMode('reject')} className="rounded-md border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">Reject JAF</button>
+                  <button onClick={() => setReviewMode('approve')} className="rounded-md bg-[#1B2A4A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2D3F5E]">Approve JAF</button>
+                </div>
+              </div>
+            ) : reviewMode === 'approve' ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <label className="block flex-1 text-xs font-semibold text-gray-700">
+                  Application closing date
+                  <input type="date" value={applicationDeadline} onChange={(event) => setApplicationDeadline(event.target.value)} min={new Date().toISOString().slice(0, 10)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
+                </label>
+                <div className="flex gap-2">
+                  <button onClick={() => setReviewMode(null)} disabled={reviewing} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700">Cancel</button>
+                  <button onClick={() => submitReview('approve')} disabled={reviewing} className="rounded-md bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-white disabled:bg-gray-400">{reviewing ? 'Approving...' : 'Confirm approval'}</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <label className="block text-xs font-semibold text-gray-700">
+                  Rejection reason
+                  <textarea value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} className="mt-1 block min-h-20 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setReviewMode(null)} disabled={reviewing} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700">Cancel</button>
+                  <button onClick={() => submitReview('reject')} disabled={reviewing} className="rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white disabled:bg-gray-400">{reviewing ? 'Rejecting...' : 'Confirm rejection'}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Student Application Status & Action Banner */}
         {isStudent && (
