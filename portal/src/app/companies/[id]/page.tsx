@@ -1,0 +1,23 @@
+'use client';
+
+import { use, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { useUserRole } from '@/lib/auth';
+
+type PointOfContact = { full_name?: string; email?: string; contact?: string };
+type Company = { company_name: string; email: string; company_desc?: string; postal_address?: string; website_url?: string; organization_type?: string; industry_sec?: string; first_point?: PointOfContact; second_point?: PointOfContact };
+function value(item?: string) { return item || '—'; }
+function POC({ heading, point }: { heading: string; point?: PointOfContact }) { return <section className="border-t border-slate-100 pt-6"><h2 className="text-base font-bold text-[#172b4d]">{heading}</h2><dl className="mt-4 grid grid-cols-1 gap-x-10 gap-y-5 md:grid-cols-3"><div><dt className="text-sm font-semibold text-slate-700">Full name</dt><dd className="mt-1 text-slate-600">{value(point?.full_name)}</dd></div><div><dt className="text-sm font-semibold text-slate-700">Email</dt><dd className="mt-1 break-words text-slate-600">{value(point?.email)}</dd></div><div><dt className="text-sm font-semibold text-slate-700">Contact</dt><dd className="mt-1 text-slate-600">{value(point?.contact)}</dd></div></dl></section>; }
+
+export default function CompanyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const { isCoordinator } = useUserRole();
+  const [company, setCompany] = useState<Company | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => { if (!isCoordinator) return; let active = true; fetch(`/phdplacement/api/companies/${encodeURIComponent(id)}`, { credentials: 'include', cache: 'no-store' }).then(async (response) => { const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || 'Unable to load company.'); if (active) setCompany(data.company); }).catch((reason: unknown) => active && setError(reason instanceof Error ? reason.message : 'Unable to load company.')); return () => { active = false; }; }, [id, isCoordinator]);
+  if (!isCoordinator) return <DashboardLayout><p className="rounded-lg bg-white p-6 text-sm text-slate-700">Coordinator access is required to view company details.</p></DashboardLayout>;
+  if (error) return <DashboardLayout><Link href="/companies" className="text-sm font-medium text-[#1b2a4a] hover:underline">← Back to registered companies</Link><p role="alert" className="mt-4 rounded-lg bg-rose-50 p-4 text-sm text-rose-700">{error}</p></DashboardLayout>;
+  if (!company) return <DashboardLayout><p className="p-10 text-center text-sm text-slate-500">Loading company profile…</p></DashboardLayout>;
+  return <DashboardLayout><Link href="/companies" className="text-sm font-medium text-[#1b2a4a] hover:underline">← Back to registered companies</Link><section className="mt-4 bg-white p-5 shadow-sm sm:p-7"><h1 className="text-3xl font-bold text-[#172b4d]">{company.company_name}</h1><p className="mt-2 text-sm text-slate-500">Company profile information submitted through the placement portal.</p><section className="mt-7"><h2 className="text-base font-bold text-[#172b4d]">Company Information</h2><dl className="mt-4 grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-3"><div><dt className="text-sm font-semibold text-slate-700">Account email</dt><dd className="mt-1 break-words text-slate-600">{value(company.email)}</dd></div><div><dt className="text-sm font-semibold text-slate-700">Website</dt><dd className="mt-1 break-words text-slate-600">{company.website_url ? <a href={company.website_url} target="_blank" rel="noreferrer" className="text-[#1b2a4a] hover:underline">{company.website_url}</a> : '—'}</dd></div><div><dt className="text-sm font-semibold text-slate-700">Organisation type</dt><dd className="mt-1 text-slate-600">{value(company.organization_type)}</dd></div><div><dt className="text-sm font-semibold text-slate-700">Industry sector</dt><dd className="mt-1 text-slate-600">{value(company.industry_sec)}</dd></div><div><dt className="text-sm font-semibold text-slate-700">Postal address</dt><dd className="mt-1 whitespace-pre-wrap text-slate-600">{value(company.postal_address)}</dd></div><div className="md:col-span-3"><dt className="text-sm font-semibold text-slate-700">Description</dt><dd className="mt-1 whitespace-pre-wrap leading-6 text-slate-600">{value(company.company_desc)}</dd></div></dl></section><div className="mt-8 space-y-8"><POC heading="1st POC" point={company.first_point} /><POC heading="2nd POC" point={company.second_point} /></div></section></DashboardLayout>;
+}
