@@ -21,10 +21,10 @@ const termsAndConditions = [
   "CCD, IIT Guwahati, reserves the right to defer or cancel your recruitment drive and release the candidates blocked by final selection if any of these terms are not adhered to.",
 ];
 
-// Programmes work as in the placement portal: a programme is a (degree, discipline) pair that can be
+// Programmes work as in the placement portal: a programme is a (degree, department) pair that can be
 // held as a major and/or a minor, and each JAF sets, per programme, whether majors/minors are eligible
 // and the minimum CPI for each.
-type ProgrammeOption = { _id: string; programme: string; discipline?: string; department?: string; major: boolean; minor: boolean };
+type ProgrammeOption = { _id: string; programme: string; department?: string; major: boolean; minor: boolean };
 type ProgrammeRule = { major: { allowed: boolean; cpi_cutoff: number }; minor: { allowed: boolean; cpi_cutoff: number } };
 const emptyRule = (): ProgrammeRule => ({ major: { allowed: false, cpi_cutoff: 0 }, minor: { allowed: false, cpi_cutoff: 0 } });
 
@@ -143,8 +143,8 @@ function JAFFormContent() {
           : [];
         setProgrammeRows(rows);
         setProgrammesLoaded(true);
-        // Salary is still entered per discipline name.
-        const uniqueNames = [...new Set(rows.map((row) => row.discipline).filter((name): name is string => Boolean(name)))].sort((x, y) => x.localeCompare(y));
+        // Salary is entered per department.
+        const uniqueNames = [...new Set(rows.map((row) => row.department).filter((name): name is string => Boolean(name)))].sort((x, y) => x.localeCompare(y));
         setProgrammeOptions(uniqueNames);
         setCompensations((current) => uniqueNames.map((programme) => current.find((item) => item.programme === programme) || ({ programme, ctc: 0, base: 0, monthlyFixed: 0 })));
       } catch (error) {
@@ -220,7 +220,7 @@ function JAFFormContent() {
               const loaded: Record<string, ProgrammeRule> = {};
               job.eligibility.forEach((e: any) => {
                 programmeRows
-                  .filter((row) => row.major && row.discipline === e.department)
+                  .filter((row) => row.major && row.department === e.department)
                   .forEach((row) => {
                     loaded[row._id] = { major: { allowed: true, cpi_cutoff: e.cpiCutoff || 0 }, minor: { allowed: false, cpi_cutoff: 0 } };
                   });
@@ -433,7 +433,7 @@ function JAFFormContent() {
 
   const applyToAllProgrammes = () => {
     setCompensations(compensations.map(c => {
-      const isEligible = programmeRows.some((row) => row.discipline === c.programme && (eligibleMap[row._id]?.major.allowed || eligibleMap[row._id]?.minor.allowed));
+      const isEligible = programmeRows.some((row) => row.department === c.programme && (eligibleMap[row._id]?.major.allowed || eligibleMap[row._id]?.minor.allowed));
       if (!isEligible) return c;
 
       return {
@@ -759,7 +759,7 @@ function JAFFormContent() {
                 </label>
               </div>
               <p className="text-xs text-gray-500 mb-4">
-                Expand a degree to choose disciplines individually. A scholar qualifies when their major (or minor) programme is selected here and their CPI for it meets the minimum.
+                Expand a degree to choose departments individually. A scholar qualifies when their major (or minor) programme is selected here and their CPI for it meets the minimum.
               </p>
               <div className="space-y-3">
                 {Object.entries(degreeGroups).map(([degree, rows]) => {
@@ -776,7 +776,7 @@ function JAFFormContent() {
                           <span className={`inline-block transition-transform ${open ? 'rotate-90' : ''}`}>&#9656;</span>
                           {degree}
                         </button>
-                        <span className="text-xs text-gray-500">{rows.length} discipline{rows.length === 1 ? '' : 's'}</span>
+                        <span className="text-xs text-gray-500">{rows.length} department{rows.length === 1 ? '' : 's'}</span>
                         <label className="ml-auto inline-flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                           <input
                             type="checkbox"
@@ -784,10 +784,10 @@ function JAFFormContent() {
                             onChange={(e) => setAllowed(rows, e.target.checked)}
                             className="w-4 h-4 accent-[#1B2A4A]"
                           />
-                          Select all offered disciplines
+                          Select all offered departments
                         </label>
                         <label className="inline-flex items-center gap-2 text-xs text-gray-700">
-                          Minimum CPI for selected disciplines
+                          Minimum CPI for selected departments
                           <input
                             type="number"
                             min={0}
@@ -805,7 +805,6 @@ function JAFFormContent() {
                             <thead className="bg-white border-y border-gray-200 text-gray-600 font-semibold">
                               <tr>
                                 <th className="px-4 py-2">Department</th>
-                                <th className="px-4 py-2">Discipline</th>
                                 <th className="px-3 py-2 text-center">Major</th>
                                 <th className="px-3 py-2 text-center">Minimum CPI</th>
                                 <th className="px-3 py-2 text-center">Minor</th>
@@ -818,7 +817,6 @@ function JAFFormContent() {
                                 return (
                                   <tr key={row._id}>
                                     <td className="px-4 py-2 text-gray-800">{row.department}</td>
-                                    <td className="px-4 py-2 text-gray-800">{row.discipline}</td>
                                     <td className="px-3 py-2 text-center">
                                       <input
                                         type="checkbox"
@@ -826,7 +824,7 @@ function JAFFormContent() {
                                         disabled={!row.major}
                                         onChange={(e) => updateRule(row, 'major', { allowed: e.target.checked })}
                                         className="w-4 h-4 accent-[#1B2A4A] disabled:opacity-40"
-                                        aria-label={`${row.discipline} as a major`}
+                                        aria-label={`${row.department} as a major`}
                                       />
                                     </td>
                                     <td className="px-3 py-2 text-center">
@@ -848,7 +846,7 @@ function JAFFormContent() {
                                         disabled={!row.minor}
                                         onChange={(e) => updateRule(row, 'minor', { allowed: e.target.checked })}
                                         className="w-4 h-4 accent-[#1B2A4A] disabled:opacity-40"
-                                        aria-label={`${row.discipline} as a minor`}
+                                        aria-label={`${row.department} as a minor`}
                                       />
                                     </td>
                                     <td className="px-3 py-2 text-center">

@@ -46,7 +46,7 @@ export async function GET(
         void Programme; // make sure the `programmes` model is registered for populate
         job = await Job.findOne(query)
           .populate('companyId', 'company_name email website_url')
-          .populate({ path: 'eligible_programmes.programme', select: 'programme discipline department major minor' });
+          .populate({ path: 'eligible_programmes.programme', select: 'programme department major minor' });
 
         if (job && role === 'student') {
           const hasApplied = (student.jobs_applied || []).some(

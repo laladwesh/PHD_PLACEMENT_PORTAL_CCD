@@ -13,7 +13,7 @@
  *      to every student; a placement-eligible student may apply to any JAF).
  *
  * JAFs created before programmes existed only have a department list (`eligibility`); those are
- * still honoured by matching the student's department/discipline name and CPI cut-off.
+ * still honoured by matching the student's department name and CPI cut-off.
  */
 // Same tolerance the placement portal applies when comparing CPI with a cut-off.
 const CPI_TOLERANCE = 0.05;

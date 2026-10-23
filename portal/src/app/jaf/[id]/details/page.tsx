@@ -530,7 +530,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                       <tr>
                         <th className="px-4 py-2.5 w-12 text-center">#</th>
                         <th className="px-4 py-2.5">Programme</th>
-                        <th className="px-4 py-2.5">Discipline</th>
+                        <th className="px-4 py-2.5">Department</th>
                         <th className="px-4 py-2.5 w-32 text-center">Major (min CPI)</th>
                         <th className="px-4 py-2.5 w-32 text-center">Minor (min CPI)</th>
                       </tr>
@@ -540,7 +540,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                         <tr key={i} className="hover:bg-slate-50/80">
                           <td className="px-4 py-2 text-center text-gray-400">{i + 1}</td>
                           <td className="px-4 py-2 font-medium text-gray-800">{row.programme?.programme || '—'}</td>
-                          <td className="px-4 py-2 text-gray-800">{row.programme?.discipline || '—'}</td>
+                          <td className="px-4 py-2 text-gray-800">{row.programme?.department || '—'}</td>
                           <td className="px-4 py-2 text-center font-bold text-emerald-700">
                             {row.major?.allowed ? Number(row.major.cpi_cutoff || 0).toFixed(2) : <span className="font-normal text-gray-400">Not eligible</span>}
                           </td>

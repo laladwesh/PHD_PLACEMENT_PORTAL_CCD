@@ -21,8 +21,8 @@ export async function buildEligibleProgrammes(input: unknown): Promise<
   }
 
   const ids = [...new Set(entries.map((entry) => String(entry.programme)))];
-  const programmes = await Programme.find({ _id: { $in: ids } }).select('programme discipline major minor').lean() as Array<{
-    _id: mongoose.Types.ObjectId; discipline?: string; major?: boolean; minor?: boolean;
+  const programmes = await Programme.find({ _id: { $in: ids } }).select('programme department major minor').lean() as Array<{
+    _id: mongoose.Types.ObjectId; department?: string; major?: boolean; minor?: boolean;
   }>;
   const byId = new Map(programmes.map((programme) => [String(programme._id), programme]));
   if (byId.size !== ids.length) return { error: 'One or more selected programmes no longer exist.' };
@@ -49,7 +49,7 @@ export async function buildEligibleProgrammes(input: unknown): Promise<
   // Legacy department list: lowest cut-off per department name.
   const legacyByDepartment = new Map<string, number>();
   for (const row of rows) {
-    const name = byId.get(String(row.programme))?.discipline || '';
+    const name = byId.get(String(row.programme))?.department || '';
     const cutoffs = [row.major.allowed ? row.major.cpi_cutoff : null, row.minor.allowed ? row.minor.cpi_cutoff : null]
       .filter((value): value is number => value !== null);
     if (!name || !cutoffs.length) continue;
