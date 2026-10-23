@@ -4,7 +4,9 @@ import { getOrCreateStudent } from '@/lib/server/studentRepository';
 import Student from '@/lib/server/models/Student';
 
 const editableFields = new Set([
-  'name', 'gender', 'dob', 'nationality', 'alt_email', 'mobile_campus',
+  // `name` is deliberately not editable by students: it comes from the institute record. A name sent with a
+  // full profile save is ignored, so saving the form still works.
+  'gender', 'dob', 'nationality', 'alt_email', 'mobile_campus',
   'mobile_campus_alt', 'mobile_home', 'disability', 'flat_no',
   'address', 'city', 'state', 'pincode', 'hostel', 'room_number', 'category',
   'entrance_examination', 'jee_ma_gate_rank', 'rank_category', 'major_cpi', 'thesis_title',

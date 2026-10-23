@@ -43,7 +43,7 @@ const numericPaths = new Set([
 
 const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
   'Basic Information': [
-    { label: 'Full name', path: 'name', required: true },
+    { label: 'Full name', path: 'name', required: true, readOnly: true },
     { label: 'Webmail', path: 'email', type: 'email', required: true, readOnly: true },
     { label: 'Roll number', path: 'roll_number', readOnly: true },
     { label: 'Alternate email', path: 'alt_email', type: 'email', required: true },
