@@ -88,6 +88,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         );
       }
 
+      // A recruiter needs something to read: at least one of the two CVs (one-page or detailed) must be uploaded.
+      if (!student.cv?.cv1 && !student.cv?.cv2) {
+        return NextResponse.json(
+          { error: 'Upload at least one CV (one-page or detailed) in Registration > CV Upload before applying.' },
+          { status: 400 },
+        );
+      }
+
       // Check if already applied
       const alreadyApplied = (student.jobs_applied || []).some(
         (app: any) => String(app.job) === String(id)
