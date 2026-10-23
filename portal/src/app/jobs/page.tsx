@@ -46,18 +46,14 @@ export default function JobsPage() {
   }, [isStudent]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('applied_jaf_ids');
-      if (stored) {
-        setAppliedJobIds(new Set(JSON.parse(stored)));
-      }
-    } catch {}
-
     async function fetchJobs() {
       try {
         const res = await fetch('/phdplacement/api/jaf');
         if (res.ok) {
           const data = await res.json();
+          if (isStudent) {
+            setAppliedJobIds(new Set(Array.isArray(data.appliedJobIds) ? data.appliedJobIds.map(String) : []));
+          }
           const mappedJobs = data.jobs.map((j: any) => ({
             id: j._id,
             company: j.company || j.companyId?.company_name || profile.name,

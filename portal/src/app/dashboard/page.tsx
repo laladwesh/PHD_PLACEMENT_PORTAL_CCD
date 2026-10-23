@@ -75,19 +75,14 @@ export default function DashboardPage() {
   const [studentRec, setStudentRec] = useState<StudentRecord | null>(null);
 
   useEffect(() => {
-    // Read applied jobs from localStorage for instant student feedback
-    try {
-      const stored = localStorage.getItem('applied_jaf_ids');
-      if (stored) {
-        setAppliedJobIds(new Set(JSON.parse(stored)));
-      }
-    } catch {}
-
     async function fetchJobs() {
       try {
         const res = await fetch('/phdplacement/api/jaf');
         if (res.ok) {
           const data = await res.json();
+          if (isStudent) {
+            setAppliedJobIds(new Set(Array.isArray(data.appliedJobIds) ? data.appliedJobIds.map(String) : []));
+          }
           if (Array.isArray(data.jobs) && data.jobs.length > 0) {
             const mappedJobs = data.jobs.map((j: any) => ({
               id: j._id,

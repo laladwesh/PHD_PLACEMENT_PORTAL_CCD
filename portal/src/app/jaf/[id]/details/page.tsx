@@ -37,17 +37,6 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    // Check local storage for existing application
-    try {
-      const stored = localStorage.getItem('applied_jaf_ids');
-      if (stored) {
-        const idList: string[] = JSON.parse(stored);
-        if (idList.includes(String(id))) {
-          setHasApplied(true);
-        }
-      }
-    } catch {}
-
     async function fetchJob() {
       try {
         const res = await fetch(`/phdplacement/api/jaf/${id}`);
@@ -67,8 +56,22 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       }
     }
 
+    async function fetchApplicationStatus() {
+      if (!isStudent) return;
+      try {
+        const response = await fetch(`/phdplacement/api/jobs/${id}/apply`);
+        if (response.ok) {
+          const data = await response.json();
+          setHasApplied(Boolean(data.hasApplied));
+        }
+      } catch {
+        // The job details still load if the application-status check is unavailable.
+      }
+    }
+
     fetchJob();
-  }, [id]);
+    fetchApplicationStatus();
+  }, [id, isStudent]);
 
   const handleConfirmApplication = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,16 +86,6 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to submit your application.');
-
-      // Save locally
-      try {
-        const stored = localStorage.getItem('applied_jaf_ids');
-        const list: string[] = stored ? JSON.parse(stored) : [];
-        if (!list.includes(String(id))) {
-          list.push(String(id));
-          localStorage.setItem('applied_jaf_ids', JSON.stringify(list));
-        }
-      } catch {}
 
       setHasApplied(true);
       setShowApplyModal(false);
@@ -115,14 +108,6 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       toast.error(error instanceof Error ? error.message : 'Unable to withdraw your application.');
       return;
     }
-
-    try {
-      const stored = localStorage.getItem('applied_jaf_ids');
-      if (stored) {
-        const list: string[] = JSON.parse(stored).filter((item: string) => item !== String(id));
-        localStorage.setItem('applied_jaf_ids', JSON.stringify(list));
-      }
-    } catch {}
 
     setHasApplied(false);
     toast.info('Your application has been withdrawn.');
