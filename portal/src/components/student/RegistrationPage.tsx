@@ -12,7 +12,7 @@ import {
 } from '@/lib/studentRegistration';
 
 type RegistrationStep = 'profile' | 'cv' | 'fee';
-type ProfileSection = 'Basic Information' | 'Address' | 'Profile Links' | 'Previous Education Details' | 'Entrance Exam' | 'Academics';
+type ProfileSection = 'Basic Information' | 'Address' | 'Profile Links' | 'Research Profile' | 'Previous Education Details' | 'Entrance Exam' | 'Academics';
 type FieldDefinition = {
   label: string;
   path: string;
@@ -28,6 +28,7 @@ const sections: ProfileSection[] = [
   'Basic Information',
   'Address',
   'Profile Links',
+  'Research Profile',
   'Previous Education Details',
   'Entrance Exam',
   'Academics',
@@ -69,6 +70,9 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Portfolio Website (optional)', path: 'portfolio_url', type: 'url', placeholder: 'https://your-portfolio.example' },
     { label: 'Google Scholar Profile (optional)', path: 'google_scholar_url', type: 'url', placeholder: 'https://scholar.google.com/...' },
     { label: 'ORCID iD (optional)', path: 'orcid_id', placeholder: '0000-0000-0000-0000' },
+  ],
+  'Research Profile': [
+    { label: 'Tentative thesis title (optional)', path: 'thesis_title', type: 'textarea', placeholder: 'You can change this at any time' },
   ],
   'Previous Education Details': [
     { label: 'Percentage', path: 'schooling.x_percentage', type: 'number', heading: 'Class X' },
@@ -231,6 +235,54 @@ function FieldGrid({
   );
 }
 
+// Up to 10 free-text keywords (research areas, methods, skills: anything the scholar wants to show).
+const MAX_KEYWORDS = 10;
+function KeywordsInput({ keywords, onChange }: { keywords: string[]; onChange: (next: string[]) => void }) {
+  const [draft, setDraft] = useState('');
+  const full = keywords.length >= MAX_KEYWORDS;
+
+  const add = (raw: string) => {
+    const next = [...keywords];
+    for (const part of raw.split(',').map((item) => item.trim().replace(/\s+/g, ' ')).filter(Boolean)) {
+      if (next.length >= MAX_KEYWORDS) break;
+      if (next.some((keyword) => keyword.toLowerCase() === part.toLowerCase())) continue;
+      next.push(part.slice(0, 60));
+    }
+    onChange(next);
+    setDraft('');
+  };
+
+  return (
+    <div>
+      <span className="mb-1.5 block text-sm font-semibold text-slate-800">Keywords (optional, up to {MAX_KEYWORDS})</span>
+      {keywords.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {keywords.map((keyword) => (
+            <span key={keyword} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 py-1 pl-3 pr-2 text-sm text-slate-800">
+              {keyword}
+              <button type="button" aria-label={`Remove ${keyword}`} onClick={() => onChange(keywords.filter((item) => item !== keyword))} className="rounded-full px-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900">&times;</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          disabled={full}
+          maxLength={60}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); add(draft); } }}
+          onBlur={() => draft.trim() && add(draft)}
+          placeholder={full ? 'You have added 10 keywords' : 'Type a keyword and press Enter'}
+          className="h-10 w-full rounded border border-slate-400 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15 disabled:bg-slate-100"
+        />
+        <button type="button" disabled={full || !draft.trim()} onClick={() => add(draft)} className="rounded border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Add</button>
+      </div>
+      <p className="mt-1.5 text-xs text-slate-500">{keywords.length} of {MAX_KEYWORDS} added. Press Enter or a comma to add one. Coordinators and recruiters can see these.</p>
+    </div>
+  );
+}
+
 function ReadOnlyGrid({ student, fields }: { student: StudentRecord; fields: { label: string; path: string }[] }) {
   return (
     <dl className="grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
@@ -314,7 +366,12 @@ function ProfileRegistration() {
               <p className="text-sm text-slate-500">Institute email: <span className="font-medium text-slate-700">{student.email}</span></p>
             )}
           </div>
-          {section === 'Academics' ? (
+          {section === 'Research Profile' ? (
+            <div className="space-y-6">
+              <FieldGrid fields={fieldsBySection[section]} student={student} onChange={handleChange} />
+              <KeywordsInput keywords={student.keywords ?? []} onChange={(keywords) => setStudent((current) => ({ ...current, keywords }))} />
+            </div>
+          ) : section === 'Academics' ? (
             <div className="space-y-8">
               <ReadOnlyGrid student={student} fields={academicFields} />
               <FieldGrid fields={cpiFields} student={student} onChange={handleChange} />
@@ -354,11 +411,10 @@ function ProfileRegistration() {
   );
 }
 
-type UploadSlot = 'profile' | 'cv1' | 'cv2' | 'cv3';
-const cvSlots: { key: 'cv1' | 'cv2' | 'cv3'; title: string; description: string }[] = [
-  { key: 'cv1', title: 'CV1', description: 'Upload CV1 in PDF format' },
-  { key: 'cv2', title: 'CV2', description: 'Upload CV2 in PDF format' },
-  { key: 'cv3', title: 'CV3', description: 'Upload CV3 in PDF format' },
+type UploadSlot = 'profile' | 'cv1' | 'cv2';
+const cvSlots: { key: 'cv1' | 'cv2'; title: string; description: string }[] = [
+  { key: 'cv1', title: 'One-page CV', description: 'A concise one-page CV (PDF)' },
+  { key: 'cv2', title: 'Detailed CV', description: 'Your full CV with publications, projects and experience (PDF)' },
 ];
 
 function CvRegistration() {
@@ -407,7 +463,7 @@ function CvRegistration() {
     window.open(`/phdplacement/api/students/me/uploads/${slot}`, '_blank', 'noopener,noreferrer');
   };
 
-  const getSlotStatus = (slotKey: 'cv1' | 'cv2' | 'cv3') => {
+  const getSlotStatus = (slotKey: 'cv1' | 'cv2') => {
     const filePath = student.cv?.[slotKey];
     if (!filePath) {
       return { text: 'Not uploaded', classes: 'text-slate-500 bg-slate-100 border border-slate-200' };
@@ -425,7 +481,7 @@ function CvRegistration() {
     return <DashboardLayout><p className="bg-white p-6 text-sm text-slate-700">Switch to the student role to manage student uploads.</p></DashboardLayout>;
   }
 
-  const hasAnyCv = Boolean(student.cv?.cv1 || student.cv?.cv2 || student.cv?.cv3);
+  const hasAnyCv = Boolean(student.cv?.cv1 || student.cv?.cv2);
 
   return (
     <DashboardLayout>

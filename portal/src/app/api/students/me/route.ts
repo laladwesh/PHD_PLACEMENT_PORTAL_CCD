@@ -7,7 +7,7 @@ const editableFields = new Set([
   'name', 'gender', 'dob', 'nationality', 'alt_email', 'mobile_campus',
   'mobile_campus_alt', 'mobile_home', 'disability', 'flat_no',
   'address', 'city', 'state', 'pincode', 'hostel', 'room_number', 'category',
-  'entrance_examination', 'jee_ma_gate_rank', 'rank_category', 'major_cpi',
+  'entrance_examination', 'jee_ma_gate_rank', 'rank_category', 'major_cpi', 'thesis_title',
 ]);
 const profileLinkFields = ['linkedin_url', 'portfolio_url', 'google_scholar_url', 'orcid_id'] as const;
 const schoolingFields = new Set([
@@ -21,7 +21,25 @@ const linkFields = new Set(['drive_Link']);
 // LinkedIn is mandatory when submitted. Portfolio, Google Scholar, ORCID iD and the Google Drive folder are
 // optional: a blank value is accepted and clears the field.
 const urlFields = new Set(['linkedin_url', 'portfolio_url', 'google_scholar_url', 'cv.drive_Link']);
-const maxLength: Record<string, number> = { orcid_id: 60 };
+const maxLength: Record<string, number> = { orcid_id: 60, thesis_title: 300 };
+
+// Up to 10 free-text keywords, each up to 60 characters. Blanks and repeats are dropped.
+function cleanKeywords(raw: unknown): string[] | string {
+  if (!Array.isArray(raw)) return 'Keywords must be a list.';
+  const seen = new Set<string>();
+  const keywords: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') return 'Each keyword must be text.';
+    const keyword = item.trim().replace(/\s+/g, ' ');
+    if (!keyword) continue;
+    if (keyword.length > 60) return 'Each keyword can be at most 60 characters.';
+    if (seen.has(keyword.toLowerCase())) continue;
+    seen.add(keyword.toLowerCase());
+    keywords.push(keyword);
+  }
+  if (keywords.length > 10) return 'You can add at most 10 keywords.';
+  return keywords;
+}
 
 function validateOptionalFields(update: Record<string, unknown>): string | null {
   for (const [key, raw] of Object.entries(update)) {
@@ -94,6 +112,12 @@ export async function PATCH(request: Request) {
       if (Object.keys(cleanLinks).length) {
         for (const [key, value] of Object.entries(cleanLinks)) update[`cv.${key}`] = value;
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'keywords')) {
+      const keywords = cleanKeywords(body.keywords);
+      if (typeof keywords === 'string') return NextResponse.json({ error: keywords }, { status: 400 });
+      update.keywords = keywords;
     }
 
     const invalid = validateOptionalFields(update);

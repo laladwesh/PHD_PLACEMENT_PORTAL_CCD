@@ -7,9 +7,8 @@ import Student from '@/lib/server/models/Student';
 
 const uploadKinds = {
   profile: { field: 'profile_pic', label: 'profile photo' },
-  cv1: { field: 'cv.cv1', label: 'CV 1' },
-  cv2: { field: 'cv.cv2', label: 'CV 2' },
-  cv3: { field: 'cv.cv3', label: 'CV 3' },
+  cv1: { field: 'cv.cv1', label: 'one-page CV' },
+  cv2: { field: 'cv.cv2', label: 'detailed CV' },
 } as const;
 
 type UploadKind = keyof typeof uploadKinds;

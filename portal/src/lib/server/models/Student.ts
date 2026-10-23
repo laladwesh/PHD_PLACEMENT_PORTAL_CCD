@@ -18,9 +18,8 @@ const schoolingSchema = new Schema({
 }, { _id: false });
 
 const cvSchema = new Schema({
-  cv1: String,
-  cv2: String,
-  cv3: String,
+  cv1: String,   // one-page CV
+  cv2: String,   // detailed CV
   drive_Link: String,
 }, { _id: false });
 
@@ -32,7 +31,6 @@ const academicDetailsSchema = new Schema({
 
 const jobApplicationSchema = new Schema({
   job: { type: Schema.Types.ObjectId, ref: 'jobs', required: true },
-  cv_selection: { type: String, enum: ['cv1', 'cv2', 'cv3'], default: 'cv1' },
   profile: { type: String, enum: ['tech', 'non_tech', 'core'] },
   status: { type: String, enum: ['none', 'shortlist', 'waitlist', 'selected', 'rejected'], default: 'none' },
   oa_status: { type: String, enum: ['not_updated', 'shortlisted', 'not_shortlisted'], default: 'not_updated' },
@@ -56,6 +54,12 @@ const studentSchema = new Schema({
   portfolio_url: { type: String, trim: true },
   google_scholar_url: { type: String, trim: true },
   orcid_id: { type: String, trim: true },
+  thesis_title: { type: String, trim: true, maxlength: 300 },
+  keywords: {
+    type: [{ type: String, trim: true, maxlength: 60 }],
+    default: [],
+    validate: [(value: string[]) => value.length <= 10, 'You can add at most 10 keywords.'],
+  },
   flat_no: String,
   address: String,
   city: String,

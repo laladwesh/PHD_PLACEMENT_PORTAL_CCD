@@ -24,11 +24,15 @@ interface Candidate {
   supervisor?: string;
   supervisorNoc?: boolean;
   expectedGraduation?: string;
-  googleScholarLink?: string;
+  googleScholarUrl?: string;
   linkedinUrl?: string;
-  portfolioLink?: string;
+  portfolioUrl?: string;
   driveLink?: string;
-  arcId?: string;
+  orcidId?: string;
+  thesisTitle?: string;
+  keywords?: string[];
+  hasOnePageCv?: boolean;
+  hasDetailedCv?: boolean;
 }
 
 export default function ApplicantsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -113,11 +117,15 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                   supervisor: 'Prof. Faculty Advisor',
                   supervisorNoc: true,
                   expectedGraduation: 'May 2027',
-                  googleScholarLink: s.google_scholar_link || '',
+                  googleScholarUrl: s.google_scholar_url || '',
                   linkedinUrl: s.linkedin_url || '',
-                  portfolioLink: s.portfolio_link || '',
+                  portfolioUrl: s.portfolio_url || '',
                   driveLink: s.drive_link || '',
-                  arcId: s.arc_id || '',
+                  orcidId: s.orcid_id || '',
+                  thesisTitle: s.thesis_title || '',
+                  keywords: Array.isArray(s.keywords) ? s.keywords : [],
+                  hasOnePageCv: Boolean(s.has_one_page_cv),
+                  hasDetailedCv: Boolean(s.has_detailed_cv),
                 };
               });
               setCandidates(mapped);
@@ -648,9 +656,9 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                 </h4>
                 <dl className="grid grid-cols-2 gap-3 text-xs bg-gray-50 border border-gray-200 rounded-md p-3">
                   {([
-                    ['Google Scholar', selectedCandidate.googleScholarLink],
+                    ['Google Scholar', selectedCandidate.googleScholarUrl],
                     ['LinkedIn', selectedCandidate.linkedinUrl],
-                    ['Portfolio', selectedCandidate.portfolioLink],
+                    ['Portfolio', selectedCandidate.portfolioUrl],
                     ['Drive folder (publications & proofs)', selectedCandidate.driveLink],
                   ] as const).map(([label, link]) => (
                     <div key={label} className="min-w-0">
@@ -667,12 +675,60 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                     </div>
                   ))}
                   <div className="min-w-0">
-                    <dt className="text-gray-500 font-medium">ARC ID</dt>
+                    <dt className="text-gray-500 font-medium">ORCID iD</dt>
                     <dd className="mt-0.5 text-gray-900 font-semibold">
-                      {selectedCandidate.arcId || <span className="text-gray-400 font-normal">Not provided</span>}
+                      {selectedCandidate.orcidId || <span className="text-gray-400 font-normal">Not provided</span>}
                     </dd>
                   </div>
                 </dl>
+              </div>
+
+              {/* Thesis and keywords */}
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Tentative Thesis Title &amp; Keywords
+                </h4>
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-3 space-y-2.5 text-xs">
+                  <p className="text-gray-900 font-semibold">
+                    {selectedCandidate.thesisTitle || <span className="text-gray-400 font-normal">Thesis title not provided</span>}
+                  </p>
+                  {selectedCandidate.keywords && selectedCandidate.keywords.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedCandidate.keywords.map((keyword) => (
+                        <span key={keyword} className="rounded-full border border-slate-300 bg-white px-2.5 py-0.5 text-[11px] text-slate-700">{keyword}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400">No keywords provided</p>
+                  )}
+                </div>
+              </div>
+
+              {/* The scholar's two CVs */}
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">CVs</h4>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {([
+                    ['One-page CV', 'cv1', selectedCandidate.hasOnePageCv],
+                    ['Detailed CV', 'cv2', selectedCandidate.hasDetailedCv],
+                  ] as const).map(([label, kind, uploaded]) => (
+                    <div key={kind} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-gray-500 font-medium">{label}</p>
+                      {uploaded ? (
+                        <a
+                          href={`/phdplacement/api/students/${selectedCandidate.rollNumber}/uploads/${kind}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-block text-[#1B2A4A] font-semibold hover:underline"
+                        >
+                          View PDF
+                        </a>
+                      ) : (
+                        <p className="mt-1 text-gray-400">Not uploaded</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Research Focus */}

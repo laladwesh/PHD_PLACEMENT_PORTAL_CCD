@@ -34,8 +34,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (body.cv_verified === true) {
       const hasUploadedCv = Boolean(
         existingStudent.cv?.cv1 ||
-        existingStudent.cv?.cv2 ||
-        existingStudent.cv?.cv3
+        existingStudent.cv?.cv2
       );
       if (!hasUploadedCv) {
         return NextResponse.json({ error: 'Cannot verify student CV because no CV files have been uploaded.' }, { status: 400 });

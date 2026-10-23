@@ -24,6 +24,8 @@ export interface StudentRecord {
   portfolio_url?: string;
   google_scholar_url?: string;
   orcid_id?: string;
+  thesis_title?: string;
+  keywords?: string[];
   flat_no?: string;
   address?: string;
   city?: string;
@@ -49,9 +51,8 @@ export interface StudentRecord {
   };
   profile_pic?: string;
   cv: {
-    cv1?: string;
-    cv2?: string;
-    cv3?: string;
+    cv1?: string;   // one-page CV
+    cv2?: string;   // detailed CV
     drive_Link?: string;
   };
   category?: string;
@@ -71,7 +72,7 @@ export interface StudentRecord {
   readAnnouncements: string[];
 }
 
-export type StudentUploadKind = 'profile' | 'cv1' | 'cv2' | 'cv3';
+export type StudentUploadKind = 'profile' | 'cv1' | 'cv2';
 const API_ROOT = '/phdplacement/api';
 
 async function readApiResponse<T>(response: Response): Promise<T> {

@@ -33,7 +33,6 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
   // Student application state
   const [hasApplied, setHasApplied] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const [selectedCv, setSelectedCv] = useState<'cv1' | 'cv2' | 'cv3'>('cv1');
   const [submitting, setSubmitting] = useState(false);
   const [reviewMode, setReviewMode] = useState<'approve' | 'reject' | null>(null);
   const [applicationDeadline, setApplicationDeadline] = useState('');
@@ -83,10 +82,6 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
     try {
       const response = await fetch(`/phdplacement/api/jobs/${id}/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cvSelection: selectedCv,
-        }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to submit your application.');
@@ -688,22 +683,10 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
 
-              {/* CV Selection */}
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1.5">
-                  Select CV <span className="text-rose-600">*</span>
-                </label>
-                <select
-                  value={selectedCv}
-                  onChange={(e) => setSelectedCv(e.target.value as 'cv1' | 'cv2' | 'cv3')}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#1B2A4A]"
-                >
-                  <option value="cv1">CV1</option>
-                  <option value="cv2">CV2</option>
-                  <option value="cv3">CV3</option>
-                </select>
-                <p className="text-[11px] text-gray-400 mt-1">The selected CV will be attached to your application.</p>
-              </div>
+              {/* Your two CVs are shared automatically; there is nothing to choose. */}
+              <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+                Your one-page CV and your detailed CV, both from your registration, will be shared with the recruiter and the placement coordinator.
+              </p>
 
               {/* Modal Footer */}
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">

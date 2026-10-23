@@ -14,7 +14,7 @@ type Student = {
   registration_complete?: boolean;
   cv_verified?: boolean;
   fee_paid?: boolean;
-  cv?: { cv1?: string; cv2?: string; cv3?: string };
+  cv?: { cv1?: string; cv2?: string };
 };
 
 export default function RegisteredStudentsPage() {
@@ -63,8 +63,8 @@ export default function RegisteredStudentsPage() {
               <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Student</th><th className="px-4 py-3">IITG webmail</th><th className="px-4 py-3">Roll number</th><th className="px-4 py-3">Programme</th><th className="px-4 py-3">Discipline</th><th className="px-4 py-3">CPI</th><th className="px-4 py-3">CV / Verification</th><th className="px-4 py-3 text-right">Details</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? <tr><td colSpan={9} className="px-4 py-14 text-center text-slate-500">Loading registered students…</td></tr> : filteredStudents.length === 0 ? <tr><td colSpan={9} className="px-4 py-14 text-center text-slate-500">No students match this search.</td></tr> : filteredStudents.map((student, index) => {
-                  const uploaded = [student.cv?.cv1, student.cv?.cv2, student.cv?.cv3].filter(Boolean).length;
-                  return <tr key={student.roll_number} className="hover:bg-slate-50"><td className="px-4 py-3 text-slate-500">{index + 1}</td><td className="px-4 py-3 font-semibold text-slate-800">{student.name}</td><td className="px-4 py-3 text-slate-600">{student.email}</td><td className="px-4 py-3 font-mono text-slate-700">{student.roll_number}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_programme || '—'}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_discipline || '—'}</td><td className="px-4 py-3 font-semibold text-slate-700">{student.major_cpi ?? '—'}</td><td className="px-4 py-3"><span className="font-medium text-slate-700">{uploaded}/3 uploaded</span><span className={`ml-2 rounded px-2 py-0.5 text-xs font-semibold ${student.cv_verified ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{student.cv_verified ? 'Verified' : 'Pending'}</span></td><td className="px-4 py-3 text-right"><Link href={`/students/${student.roll_number}`} className="inline-flex rounded-md bg-[#1b2a4a] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#263b60]">Details</Link></td></tr>;
+                  const uploaded = [student.cv?.cv1, student.cv?.cv2].filter(Boolean).length;
+                  return <tr key={student.roll_number} className="hover:bg-slate-50"><td className="px-4 py-3 text-slate-500">{index + 1}</td><td className="px-4 py-3 font-semibold text-slate-800">{student.name}</td><td className="px-4 py-3 text-slate-600">{student.email}</td><td className="px-4 py-3 font-mono text-slate-700">{student.roll_number}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_programme || '—'}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_discipline || '—'}</td><td className="px-4 py-3 font-semibold text-slate-700">{student.major_cpi ?? '—'}</td><td className="px-4 py-3"><span className="font-medium text-slate-700">{uploaded}/2 uploaded</span><span className={`ml-2 rounded px-2 py-0.5 text-xs font-semibold ${student.cv_verified ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{student.cv_verified ? 'Verified' : 'Pending'}</span></td><td className="px-4 py-3 text-right"><Link href={`/students/${student.roll_number}`} className="inline-flex rounded-md bg-[#1b2a4a] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#263b60]">Details</Link></td></tr>;
                 })}
               </tbody>
             </table>

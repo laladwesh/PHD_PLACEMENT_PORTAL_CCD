@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     .populate({
       path: 'selectedStudents',
       model: 'student',
-      select: 'roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url google_scholar_link arc_id cv.portfolio_Link cv.drive_Link',
+      select: 'roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url portfolio_url google_scholar_url orcid_id cv.cv1 cv.cv2 cv.drive_Link thesis_title keywords',
     })
     .lean() as any;
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   // applications saved before the selectedStudents link was introduced or if
   // an earlier partial write left that array out of sync.
   const studentsWithApplication = await Student.find({ 'jobs_applied.job': job._id })
-    .select('roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url google_scholar_link arc_id cv.portfolio_Link cv.drive_Link')
+    .select('roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url portfolio_url google_scholar_url orcid_id cv.cv1 cv.cv2 cv.drive_Link thesis_title keywords')
     .lean() as any[];
 
   const applicantsById = new Map<string, any>();
@@ -62,7 +62,6 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     );
     return {
       application_status: application?.status || 'none',
-      cvSelection: application?.cv_selection || 'cv1',
       profile: application?.profile || 'tech',
       student: {
         id: String(student._id),
@@ -78,10 +77,15 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         cv_flagged: student.cv_flagged,
         registration_complete: student.registration_complete,
         linkedin_url: student.linkedin_url || '',
-        google_scholar_link: student.google_scholar_link || '',
-        portfolio_link: student.cv?.portfolio_Link || '',
+        portfolio_url: student.portfolio_url || '',
+        google_scholar_url: student.google_scholar_url || '',
+        orcid_id: student.orcid_id || '',
         drive_link: student.cv?.drive_Link || '',
-        arc_id: student.arc_id || '',
+        thesis_title: student.thesis_title || '',
+        keywords: student.keywords || [],
+        // The two CVs. Open them with GET /api/students/<roll>/uploads/cv1 or cv2.
+        has_one_page_cv: Boolean(student.cv?.cv1),
+        has_detailed_cv: Boolean(student.cv?.cv2),
       },
     };
   });

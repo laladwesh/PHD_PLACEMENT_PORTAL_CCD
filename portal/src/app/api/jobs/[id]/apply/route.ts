@@ -54,9 +54,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Only registered students can apply for placement drives.' }, { status: 403 });
     }
 
-    const body = await request.json().catch(() => ({}));
-    const cvSelection = body.cvSelection || 'cv1';
-
     await connectToDatabase();
     if (!mongoose.isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
@@ -68,10 +65,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!openJob.applicationDeadline || new Date(openJob.applicationDeadline).getTime() < Date.now()) {
       return NextResponse.json({ error: 'This JAF is not open for applications or its application deadline has passed.' }, { status: 400 });
     }
-    if (!['cv1', 'cv2', 'cv3'].includes(cvSelection)) {
-      return NextResponse.json({ error: 'Choose CV1, CV2, or CV3.' }, { status: 400 });
-    }
-
     if (!identity.rollNumber) {
       return NextResponse.json({ error: 'Your student registration could not be identified.' }, { status: 403 });
     }
@@ -106,7 +99,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       // Add to student's applied list
       student.jobs_applied.push({
         job: mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : id,
-        cv_selection: cvSelection,
         status: 'none',
       });
       await student.save();
