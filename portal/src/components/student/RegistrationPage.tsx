@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, Fragment, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useUserRole } from '@/lib/auth';
+import { REGISTRATION_FEE } from '@/lib/fees';
 import {
   loadStudentRecord,
   saveStudentRecord,
@@ -635,7 +636,7 @@ function FeeRegistration() {
       <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
         <div className="bg-white px-6 py-5 sm:px-7">
           <p className="text-sm font-medium text-slate-500">Registration fee</p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">₹2,000</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">₹{REGISTRATION_FEE.toLocaleString('en-IN')}</p>
         </div>
         <div className="bg-white px-6 py-5 sm:px-7">
           <p className="text-sm font-medium text-slate-500">Payment deadline</p>
