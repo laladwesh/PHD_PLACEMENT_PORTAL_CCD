@@ -38,6 +38,9 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
   const [applicationDeadline, setApplicationDeadline] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [reviewing, setReviewing] = useState(false);
+  // Only a coordinator chooses whether a JAF is a placement job or an internship job.
+  const [jobType, setJobType] = useState<'' | 'internship' | 'placement'>('');
+  const [savingType, setSavingType] = useState(false);
 
   useEffect(() => {
     async function fetchJob() {
@@ -117,6 +120,10 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
       toast.error('Set an application closing date before approving this JAF.');
       return;
     }
+    if (action === 'approve' && !jobType) {
+      toast.error('Choose whether this is a placement job or an internship job.');
+      return;
+    }
     if (action === 'reject' && !rejectionReason.trim()) {
       toast.error('Provide a reason before rejecting this JAF.');
       return;
@@ -130,6 +137,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
         body: JSON.stringify({
           action,
           applicationDeadline: action === 'approve' ? applicationDeadline : undefined,
+          is_placement_job: action === 'approve' ? jobType === 'placement' : undefined,
           feedback: action === 'reject' ? rejectionReason.trim() : undefined,
         }),
       });
@@ -140,6 +148,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
         ...current,
         status: action === 'approve' ? 'Approved' : 'Rejected',
         applicationDeadline: action === 'approve' ? result.data?.applicationDeadline || applicationDeadline : current.applicationDeadline,
+        is_placement_job: action === 'approve' ? jobType === 'placement' : current.is_placement_job,
         feedback: action === 'reject' ? rejectionReason.trim() : '',
       }));
       setReviewMode(null);
@@ -253,6 +262,11 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
               }`}>
                 {job.status || 'Approved'}
               </span>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                job.is_placement_job ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-teal-50 text-teal-700 border border-teal-200'
+              }`}>
+                {job.is_placement_job ? 'Placement job' : 'Internship job'}
+              </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
               {job.jobDesignation || 'Untitled Role'}
@@ -295,6 +309,14 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
             ) : reviewMode === 'approve' ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <label className="block flex-1 text-xs font-semibold text-gray-700">
+                  Job type
+                  <select value={jobType} onChange={(event) => setJobType(event.target.value as '' | 'internship' | 'placement')} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" required>
+                    <option value="">Select job type…</option>
+                    <option value="internship">Internship job</option>
+                    <option value="placement">Placement job</option>
+                  </select>
+                </label>
+                <label className="block flex-1 text-xs font-semibold text-gray-700">
                   Application closing date
                   <input type="date" value={applicationDeadline} onChange={(event) => setApplicationDeadline(event.target.value)} min={new Date().toISOString().slice(0, 10)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
                 </label>
@@ -315,6 +337,48 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {isCoordinator && job.status === 'Approved' && (
+          <div className="mb-6 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <label className="block text-xs font-semibold text-gray-700">
+              Job type (coordinator only)
+              <select
+                value={jobType || (job.is_placement_job ? 'placement' : 'internship')}
+                onChange={(event) => setJobType(event.target.value as 'internship' | 'placement')}
+                className="mt-1 block rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="internship">Internship job</option>
+                <option value="placement">Placement job</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={savingType || !jobType || (jobType === 'placement') === Boolean(job.is_placement_job)}
+              onClick={async () => {
+                setSavingType(true);
+                try {
+                  const response = await fetch(`/phdplacement/api/jobs/${id}/type`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_placement_job: jobType === 'placement' }),
+                  });
+                  const result = await response.json().catch(() => ({}));
+                  if (!response.ok) throw new Error(result.error || 'Unable to change the job type.');
+                  setJob((current: any) => ({ ...current, is_placement_job: jobType === 'placement' }));
+                  toast.success(jobType === 'placement' ? 'Marked as a placement job.' : 'Marked as an internship job.');
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : 'Unable to change the job type.');
+                } finally {
+                  setSavingType(false);
+                }
+              }}
+              className="rounded-md bg-[#1B2A4A] px-3 py-2 text-xs font-semibold text-white disabled:bg-gray-400"
+            >
+              {savingType ? 'Saving...' : 'Save job type'}
+            </button>
+            <p className="text-[11px] text-gray-500">Placement jobs are open only to scholars marked eligible for placements. Existing applications are not affected.</p>
           </div>
         )}
 

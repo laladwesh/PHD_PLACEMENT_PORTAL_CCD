@@ -11,6 +11,8 @@ export interface IJob extends Document {
   applicationDeadline?: Date;
   eligibility?: Array<{ department?: string; cpiCutoff: number }>;
   allowBacklog?: boolean;
+  // Chosen by a coordinator. true = placement job, false = internship job.
+  is_placement_job?: boolean;
   // Placement-portal style eligibility: one entry per programme, with separate major/minor rules.
   eligible_programmes?: Array<{
     programme: mongoose.Types.ObjectId;
@@ -141,6 +143,7 @@ const JobSchema = new Schema<IJob>(
         description: { type: String },
       },
     ],
+    is_placement_job: { type: Boolean, default: false },
     agreedToTerms: { type: Boolean, default: false },
     policyVersion: { type: String },
     finalSelectionFile: { type: String },

@@ -68,6 +68,7 @@ export interface StudentRecord {
   cv_verified_at?: string;
   cv_reupload_allowed: boolean;
   registration_complete: boolean;
+  is_eligible_for_placement?: boolean;
   savedAnnouncements: string[];
   readAnnouncements: string[];
 }

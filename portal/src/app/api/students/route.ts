@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     if (review === 'flagged') query.cv_flagged = true;
     if (search) query.$or = [{ name: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }, { roll_number: Number(search) || -1 }];
     const [students, count] = await Promise.all([
-      Student.find(query).select('roll_number name email major_cpi academic_details status cv_verified cv_flagged fee_paid fee_remaining registration_complete cv').sort({ roll_number: 1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Student.find(query).select('roll_number name email major_cpi academic_details status cv_verified cv_flagged fee_paid fee_remaining registration_complete is_eligible_for_placement cv').sort({ roll_number: 1 }).skip((page - 1) * limit).limit(limit).lean(),
       Student.countDocuments(query),
     ]);
     return NextResponse.json({ count, page, limit, students });

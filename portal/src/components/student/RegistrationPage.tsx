@@ -109,6 +109,7 @@ const academicFields = [
   { label: 'Major Department', path: 'academic_details.major_department' },
   { label: 'Major Programme', path: 'academic_details.major_programme' },
   { label: 'Major Discipline', path: 'academic_details.major_discipline' },
+  { label: 'Eligible for placements (set by CCD)', path: 'is_eligible_for_placement' },
 ];
 
 function emptyStudentRecord(): StudentRecord {
@@ -291,7 +292,7 @@ function ReadOnlyGrid({ student, fields }: { student: StudentRecord; fields: { l
         return (
           <div key={field.path}>
             <dt className="text-sm font-semibold text-slate-700">{field.label}</dt>
-            <dd className="mt-1 text-base text-slate-600">{field.path === 'backlogs' && value === '0' ? '—' : value || '—'}</dd>
+            <dd className="mt-1 text-base text-slate-600">{field.path === 'is_eligible_for_placement' ? (value === 'true' ? 'Yes: placement and internship jobs' : 'No: internship jobs only') : field.path === 'backlogs' && value === '0' ? '—' : value || '—'}</dd>
           </div>
         );
       })}

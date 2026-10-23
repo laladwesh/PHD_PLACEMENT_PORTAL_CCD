@@ -58,7 +58,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (!mongoose.isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
     }
-    const openJob = await Job.findById(id).select('status applicationDeadline eligibility eligible_programmes academicEligibility allowBacklog').lean();
+    const openJob = await Job.findById(id).select('status applicationDeadline eligibility eligible_programmes academicEligibility allowBacklog is_placement_job').lean();
     if (!openJob || openJob.status !== 'Approved') {
       return NextResponse.json({ error: 'This job is not open for applications.' }, { status: 404 });
     }

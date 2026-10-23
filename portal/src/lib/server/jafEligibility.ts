@@ -8,7 +8,9 @@
  *   1. their major (or minor) programme is allowed by the JAF and their CPI for it is at least the
  *      cut-off (a 0.05 tolerance is allowed, as in the placement portal);
  *   2. they meet the minimum Class X / Class XII percentage, if the JAF sets one;
- *   3. they have no active backlogs, unless the JAF allows backlogs.
+ *   3. they have no active backlogs, unless the JAF allows backlogs;
+ *   4. a placement JAF is only open to students marked eligible for placements (internship JAFs are open
+ *      to every student; a placement-eligible student may apply to any JAF).
  *
  * JAFs created before programmes existed only have a department list (`eligibility`); those are
  * still honoured by matching the student's department/discipline name and CPI cut-off.
@@ -18,7 +20,7 @@ const CPI_TOLERANCE = 0.05;
 
 /** Student fields needed to evaluate eligibility; use as a Mongoose .select() string. */
 export const ELIGIBILITY_STUDENT_FIELDS =
-  'academic_details major minor major_cpi minor_cpi schooling backlogs';
+  'academic_details major minor major_cpi minor_cpi schooling backlogs is_eligible_for_placement';
 
 type Criterion = { allowed?: boolean; cpi_cutoff?: number | null };
 
@@ -27,6 +29,7 @@ type JobLike = {
   eligible_programmes?: Array<{ programme?: unknown; major?: Criterion; minor?: Criterion }>;
   academicEligibility?: { tenthPercentage?: number; twelfthPercentage?: number };
   allowBacklog?: boolean;
+  is_placement_job?: boolean;
 };
 
 type StudentLike = {
@@ -44,6 +47,7 @@ type StudentLike = {
   minor_cpi?: number;
   schooling?: { x_percentage?: number; xii_percentage?: number };
   backlogs?: number;
+  is_eligible_for_placement?: boolean;
 };
 
 function normalise(value: unknown): string {
@@ -82,6 +86,11 @@ export type EligibilityResult = { eligible: boolean; reasons: string[] };
 
 export function evaluateJafEligibility(job: JobLike, student: StudentLike): EligibilityResult {
   const reasons: string[] = [];
+
+  // Placement vs internship: only students sitting for placements may apply to a placement JAF.
+  if (job.is_placement_job && !student.is_eligible_for_placement) {
+    reasons.push('This is a placement role. Only scholars who are eligible for placements can apply to it.');
+  }
 
   // Class X / XII percentage cut-offs, if the company set any.
   const tenth = Number(job.academicEligibility?.tenthPercentage) || 0;

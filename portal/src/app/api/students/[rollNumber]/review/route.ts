@@ -55,6 +55,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
     if (typeof body.cv_reupload_allowed === 'boolean') update.cv_reupload_allowed = body.cv_reupload_allowed;
     if (typeof body.fee_paid === 'boolean') update.fee_paid = body.fee_paid;
+    // Only a coordinator can mark a scholar as eligible for placements (students cannot edit this themselves).
+    if (typeof body.is_eligible_for_placement === 'boolean') update.is_eligible_for_placement = body.is_eligible_for_placement;
     if (body.fee_remaining !== undefined) {
       const remaining = Number(body.fee_remaining);
       if (!Number.isFinite(remaining) || remaining < 0) return NextResponse.json({ error: 'Fee remaining must be a non-negative amount.' }, { status: 400 });

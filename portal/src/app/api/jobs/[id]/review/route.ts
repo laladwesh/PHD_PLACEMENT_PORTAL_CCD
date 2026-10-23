@@ -16,9 +16,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (isAuthorizationError(actor)) return actor;
   const { id } = await params;
   if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: 'Invalid job id.' }, { status: 400 });
-  let body: { action?: string; feedback?: string; applicationDeadline?: string };
+  let body: { action?: string; feedback?: string; applicationDeadline?: string; is_placement_job?: boolean };
   try {
-    body = await request.json() as { action?: string; feedback?: string; applicationDeadline?: string };
+    body = await request.json() as { action?: string; feedback?: string; applicationDeadline?: string; is_placement_job?: boolean };
   } catch {
     return NextResponse.json({ error: 'Review data must be valid JSON.' }, { status: 400 });
   }
@@ -29,7 +29,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if (feedback.length > 2000) return NextResponse.json({ error: 'Feedback must be 2000 characters or fewer.' }, { status: 400 });
 
   let applicationDeadline: Date | undefined;
+  let isPlacementJob: boolean | undefined;
   if (status === 'Approved') {
+    // Only the coordinator decides whether this is a placement or an internship job, and must say so explicitly.
+    if (typeof body.is_placement_job !== 'boolean') {
+      return NextResponse.json({ error: 'Choose whether this is a placement job or an internship job before approving.' }, { status: 400 });
+    }
+    isPlacementJob = body.is_placement_job;
     const dateOnly = typeof body.applicationDeadline === 'string' ? body.applicationDeadline.trim() : '';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
       return NextResponse.json({ error: 'An application closing date is required to approve a JAF.' }, { status: 400 });
@@ -58,8 +64,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     status,
     feedback: status === 'Approved' ? '' : feedback,
     ...(applicationDeadline ? { applicationDeadline, application_deadline: applicationDeadline } : {}),
+    ...(isPlacementJob !== undefined ? { is_placement_job: isPlacementJob } : {}),
   };
   const updated = await Jobs.findByIdAndUpdate(id, { $set: update }, { new: true, runValidators: true }).lean();
-  await AuditEvent.create({ actor_email: actor.email, action: `job.review.${body.action}`, entity_type: 'job', entity_id: id, before: { status: job.status, feedback: job.feedback }, after: { status: updated?.status, feedback: updated?.feedback, applicationDeadline: updated?.applicationDeadline } });
+  await AuditEvent.create({ actor_email: actor.email, action: `job.review.${body.action}`, entity_type: 'job', entity_id: id, before: { status: job.status, feedback: job.feedback }, after: { status: updated?.status, feedback: updated?.feedback, applicationDeadline: updated?.applicationDeadline, is_placement_job: updated?.is_placement_job } });
   return NextResponse.json({ success: true, data: updated });
 }

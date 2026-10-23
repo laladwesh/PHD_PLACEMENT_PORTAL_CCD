@@ -419,6 +419,8 @@ const jobSchema = new Schema(
     ghost_oa_completed_at: { type: Date, default: null },
     ghost_oa_deleted: { type: Boolean, default: false },
     feedback: { type: String },
+    // Chosen by a coordinator. true = placement job, false = internship job.
+    is_placement_job: { type: Boolean, default: false },
   },
   {
     timestamps: true,
