@@ -128,7 +128,7 @@ export default function Register() {
         <div className="p-8">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 flex items-center justify-center relative mb-4">
-              <img src="/phdplacement/logo.jpeg" alt="Logo" className="w-full h-full object-contain" />
+              <img src="/phdplacement/logo.jpeg" alt="IIT Guwahati logo" className="w-full h-full object-contain" />
             </div>
           </div>
 

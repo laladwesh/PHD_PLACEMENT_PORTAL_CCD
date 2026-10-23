@@ -88,7 +88,8 @@ export function evaluateJafEligibility(job: JobLike, student: StudentLike): Elig
   const reasons: string[] = [];
 
   // Placement vs internship: only students sitting for placements may apply to a placement JAF.
-  if (job.is_placement_job && !student.is_eligible_for_placement) {
+  // Only an explicit false blocks: students default to eligible, and older records have no value at all.
+  if (job.is_placement_job && student.is_eligible_for_placement === false) {
     reasons.push('This is a placement role. Only scholars who are eligible for placements can apply to it.');
   }
 

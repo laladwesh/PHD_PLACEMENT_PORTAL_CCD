@@ -83,7 +83,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       // Placed_Intern is set when the coordinator approves an offer (one-offer rule).
       if (student.status === 'Blocked' || student.status === 'Placed_Intern') {
         return NextResponse.json(
-          { error: 'Your placement portal access is restricted because you have already accepted an offer.' },
+          { error: 'Your PHD Career Portal access is restricted because you have already accepted an offer.' },
           { status: 403 }
         );
       }

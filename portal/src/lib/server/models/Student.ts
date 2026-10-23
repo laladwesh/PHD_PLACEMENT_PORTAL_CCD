@@ -92,9 +92,9 @@ const studentSchema = new Schema({
   cv_verified_at: Date,
   cv_reupload_allowed: { type: Boolean, default: false },
   status: { type: String, enum: ['Placed_Intern', 'Sitting_Intern', 'Blocked'], default: 'Sitting_Intern' },
-  // Set by a coordinator only. true = may apply to any JAF (placement or internship);
-  // false = internship JAFs only.
-  is_eligible_for_placement: { type: Boolean, default: false },
+  // Set by a coordinator only. true (the default) = may apply to any JAF (placement or internship);
+  // false = internship JAFs only. Records saved before this field existed count as true.
+  is_eligible_for_placement: { type: Boolean, default: true },
   jobs_applied: { type: [jobApplicationSchema], default: [] },
   preference_list: [{ type: Schema.Types.ObjectId, ref: 'jobs' }],
   shortListedCompanies: [{ type: Schema.Types.ObjectId, ref: 'jobs' }],

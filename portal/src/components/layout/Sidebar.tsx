@@ -119,10 +119,10 @@ export function Sidebar() {
       {/* Logo */}
       <div className="p-5 flex items-center gap-3">
         <div className="w-[35px] h-[35px] flex-shrink-0">
-          <img src="/phdplacement/logo.jpeg" alt="Logo" className="w-full h-full object-contain" />
+          <img src="/phdplacement/logo.jpeg" alt="IIT Guwahati logo" className="w-full h-full object-contain" />
         </div>
         <div>
-          <span className="font-bold text-[15px] text-[#1B2A4A] leading-tight block">Placement Portal</span>
+          <span className="font-bold text-[15px] text-[#1B2A4A] leading-tight block">PHD Career Portal</span>
           <span className="text-[10px] text-gray-500 font-medium">IIT Guwahati</span>
         </div>
       </div>

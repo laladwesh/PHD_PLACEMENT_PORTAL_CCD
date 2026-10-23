@@ -77,13 +77,16 @@ function SignInCard() {
       <div className="w-16 h-16 mx-auto mb-3 flex items-center justify-center">
         <img
           src="/phdplacement/logo.jpeg"
-          alt="IIT Guwahati"
+          alt="IIT Guwahati logo"
           className="w-full h-full object-contain"
         />
       </div>
 
-      <h1 className="text-xl font-bold text-gray-900 tracking-tight">PhD Placement Portal</h1>
+      <h1 className="text-xl font-bold text-gray-900 tracking-tight">PHD Career Portal</h1>
       <p className="text-xs text-gray-500 mt-1">Centre for Career Development — IIT Guwahati</p>
+      <p className="mt-4 text-xs text-gray-600">
+        Where PhD scholars of IIT Guwahati register and apply for roles, and recruiters post job application forms and meet PhD talent.
+      </p>
 
       {error && (
         <div role="alert" className="mt-4 rounded-md bg-red-50 border border-red-200 p-3 text-xs text-red-700 font-medium text-left">
@@ -196,6 +199,29 @@ function SignInCard() {
   );
 }
 
+// Server-rendered stand-in shown until the interactive card loads. It carries the content crawlers and
+// link previews need: the logo, the portal name, what the portal is for, and the sign-in link.
+function SignInPlaceholder() {
+  return (
+    <main className="relative z-10 w-full max-w-md mx-auto bg-white rounded-xl shadow-2xl p-8 text-center border border-gray-100">
+      <div className="w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+        <img src="/phdplacement/logo.jpeg" alt="IIT Guwahati logo" className="w-full h-full object-contain" />
+      </div>
+      <h1 className="text-xl font-bold text-gray-900 tracking-tight">PHD Career Portal</h1>
+      <p className="text-xs text-gray-500 mt-1">Centre for Career Development — IIT Guwahati</p>
+      <p className="mt-4 text-xs text-gray-600">
+        Where PhD scholars of IIT Guwahati register and apply for roles, and recruiters post job application forms and meet PhD talent.
+      </p>
+      <a
+        href="/phdplacement/api/auth/azure/login"
+        className="mt-6 flex w-full items-center justify-center rounded-lg bg-[#0f172a] px-4 py-2.5 text-sm font-semibold text-white"
+      >
+        Sign in with Microsoft
+      </a>
+    </main>
+  );
+}
+
 export default function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center overflow-hidden relative">
@@ -203,7 +229,7 @@ export default function AuthPage() {
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: 'url(/phdplacement/bg.jpeg)' }}
       />
-      <Suspense fallback={<div className="relative z-10 text-white font-medium">Loading sign-in…</div>}>
+      <Suspense fallback={<SignInPlaceholder />}>
         <SignInCard />
       </Suspense>
     </div>
