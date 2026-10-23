@@ -5,19 +5,21 @@ import Student from '@/lib/server/models/Student';
 
 const editableFields = new Set([
   'name', 'gender', 'dob', 'nationality', 'alt_email', 'mobile_campus',
-  'mobile_campus_alt', 'mobile_home', 'disability', 'linkedin_url', 'google_scholar_link', 'arc_id', 'flat_no',
+  'mobile_campus_alt', 'mobile_home', 'disability', 'flat_no',
   'address', 'city', 'state', 'pincode', 'hostel', 'room_number', 'category',
   'entrance_examination', 'jee_ma_gate_rank', 'rank_category',
 ]);
+const profileLinkFields = ['linkedin_url', 'portfolio_url', 'google_scholar_url', 'orcid_id'] as const;
 const schoolingFields = new Set([
   'x_percentage', 'x_pass_year', 'x_board', 'x_exam_medium', 'xii_percentage',
-  'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'gap', 'reason_gap',
+  'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'ug_major_discipline', 'ug_cpi',
+  'gap', 'reason_gap',
 ]);
-const linkFields = new Set(['drive_Link', 'portfolio_Link']);
+const linkFields = new Set(['drive_Link']);
 
-// Optional profile links. Blank clears the field; anything else must be a plain http(s) URL.
-const urlFields = new Set(['linkedin_url', 'google_scholar_link', 'cv.drive_Link', 'cv.portfolio_Link']);
-const maxLength: Record<string, number> = { arc_id: 60 };
+// Profile links are mandatory when submitted; the Google Drive folder is optional.
+const urlFields = new Set(['linkedin_url', 'portfolio_url', 'google_scholar_url', 'cv.drive_Link']);
+const maxLength: Record<string, number> = { orcid_id: 60 };
 
 function validateOptionalFields(update: Record<string, unknown>): string | null {
   for (const [key, raw] of Object.entries(update)) {
@@ -67,6 +69,15 @@ export async function PATCH(request: Request) {
 
     for (const [key, value] of Object.entries(body)) {
       if (editableFields.has(key)) update[key] = value;
+    }
+
+    for (const field of profileLinkFields) {
+      if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+      const value = body[field];
+      if (typeof value !== 'string' || !value.trim()) {
+        return NextResponse.json({ error: `${field.replaceAll('_', ' ')} is required.` }, { status: 400 });
+      }
+      update[field] = value.trim();
     }
 
     if (body.schooling && typeof body.schooling === 'object' && !Array.isArray(body.schooling)) {

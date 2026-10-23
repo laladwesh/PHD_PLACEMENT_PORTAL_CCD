@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, Fragment, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useUserRole } from '@/lib/auth';
@@ -12,7 +12,7 @@ import {
 } from '@/lib/studentRegistration';
 
 type RegistrationStep = 'profile' | 'cv' | 'fee';
-type ProfileSection = 'Basic Information' | 'Social Education Profile' | 'Address' | 'Schooling' | 'Entrance Exam' | 'Academics' | 'CPI';
+type ProfileSection = 'Basic Information' | 'Address' | 'Profile Links' | 'Previous Education Details' | 'Entrance Exam' | 'Academics';
 type FieldDefinition = {
   label: string;
   path: string;
@@ -21,23 +21,23 @@ type FieldDefinition = {
   readOnly?: boolean;
   options?: string[];
   placeholder?: string;
+  heading?: string;
 };
 
 const sections: ProfileSection[] = [
   'Basic Information',
-  'Social Education Profile',
   'Address',
-  'Schooling',
+  'Profile Links',
+  'Previous Education Details',
   'Entrance Exam',
   'Academics',
-  'CPI',
 ];
 
 const numericPaths = new Set([
   'roll_number', 'mobile_campus', 'mobile_campus_alt', 'mobile_home', 'pincode',
   'schooling.x_percentage', 'schooling.x_pass_year', 'schooling.xii_percentage',
   'schooling.xii_pass_year', 'schooling.gap', 'year_of_admission',
-  'year_of_minor_admission', 'backlogs', 'jee_ma_gate_rank', 'major_cpi', 'minor_cpi',
+  'backlogs', 'jee_ma_gate_rank', 'major_cpi', 'schooling.ug_cpi',
 ]);
 
 const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
@@ -57,14 +57,6 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Hostel', path: 'hostel' },
     { label: 'Room number', path: 'room_number' },
   ],
-  // All four are optional.
-  'Social Education Profile': [
-    { label: 'Google Scholar Link', path: 'google_scholar_link', type: 'url', placeholder: 'https://scholar.google.com/citations?user=...' },
-    { label: 'LinkedIn Profile', path: 'linkedin_url', type: 'url', placeholder: 'https://www.linkedin.com/in/...' },
-    { label: 'Portfolio', path: 'cv.portfolio_Link', type: 'url', placeholder: 'https://...' },
-    { label: 'ARC ID', path: 'arc_id', placeholder: 'Optional' },
-    { label: 'Google Drive Folder Link (publications & proofs)', path: 'cv.drive_Link', type: 'url', placeholder: 'https://drive.google.com/drive/folders/...' },
-  ],
   Address: [
     { label: 'Flat / house number', path: 'flat_no' },
     { label: 'Street address', path: 'address', type: 'textarea', required: true },
@@ -72,16 +64,24 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'State', path: 'state', required: true },
     { label: 'PIN code', path: 'pincode', type: 'number', required: true },
   ],
-  Schooling: [
-    { label: 'Class X percentage', path: 'schooling.x_percentage', type: 'number' },
+  'Profile Links': [
+    { label: 'LinkedIn Profile', path: 'linkedin_url', type: 'url', required: true, placeholder: 'https://www.linkedin.com/in/your-profile' },
+    { label: 'Portfolio Website', path: 'portfolio_url', type: 'url', required: true, placeholder: 'https://your-portfolio.example' },
+    { label: 'Google Scholar Profile', path: 'google_scholar_url', type: 'url', required: true, placeholder: 'https://scholar.google.com/...' },
+    { label: 'ORCID iD', path: 'orcid_id', required: true, placeholder: '0000-0000-0000-0000' },
+  ],
+  'Previous Education Details': [
+    { label: 'Percentage', path: 'schooling.x_percentage', type: 'number', heading: 'Class X' },
     { label: 'Class X passing year', path: 'schooling.x_pass_year', type: 'number' },
     { label: 'Class X board', path: 'schooling.x_board' },
     { label: 'Class X exam medium', path: 'schooling.x_exam_medium' },
-    { label: 'Class XII percentage', path: 'schooling.xii_percentage', type: 'number' },
+    { label: 'Percentage', path: 'schooling.xii_percentage', type: 'number', heading: 'Class XII' },
     { label: 'Class XII passing year', path: 'schooling.xii_pass_year', type: 'number' },
     { label: 'Class XII board', path: 'schooling.xii_exam_board' },
     { label: 'Class XII exam medium', path: 'schooling.xii_exam_medium' },
-    { label: 'Education gap (years)', path: 'schooling.gap', type: 'number' },
+    { label: 'Major Discipline', path: 'schooling.ug_major_discipline', required: true, heading: 'Undergraduate' },
+    { label: 'CPI', path: 'schooling.ug_cpi', type: 'number', required: true },
+    { label: 'Education gap (years)', path: 'schooling.gap', type: 'number', heading: 'Other information' },
     { label: 'Reason for gap', path: 'schooling.reason_gap', type: 'textarea' },
   ],
   'Entrance Exam': [
@@ -90,7 +90,6 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Rank category', path: 'rank_category' },
   ],
   Academics: [],
-  CPI: [],
 };
 
 const academicFields = [
@@ -100,15 +99,6 @@ const academicFields = [
   { label: 'Major CPI', path: 'major_cpi' },
   { label: 'Major Programme', path: 'academic_details.major_programme' },
   { label: 'Major Discipline', path: 'academic_details.major_discipline' },
-  { label: 'Minor Admission Year', path: 'year_of_minor_admission' },
-  { label: 'Minor Department', path: 'academic_details.minor_department' },
-  { label: 'Minor Discipline', path: 'academic_details.minor_discipline' },
-];
-
-const cpiFields = [
-  { label: 'Major CPI', path: 'major_cpi' },
-  { label: 'Minor CPI', path: 'minor_cpi' },
-  ...Array.from({ length: 12 }, (_, index) => ({ label: `Semester ${index + 1} SPI`, path: `semester_wise_spi.spi_${index + 1}` })),
 ];
 
 function emptyStudentRecord(): StudentRecord {
@@ -122,7 +112,6 @@ function emptyStudentRecord(): StudentRecord {
     schooling: {},
     cv: {},
     backlogs: 0,
-    semester_wise_spi: {},
     cv_verified: false,
     cv_flagged: false,
     cv_flag_note: '',
@@ -189,7 +178,9 @@ function FieldGrid({
   return (
     <div className="grid grid-cols-1 gap-x-10 gap-y-5 md:grid-cols-2">
       {fields.map((field) => (
-        <label key={field.path} className={`block ${field.type === 'textarea' ? 'md:col-span-2' : ''}`}>
+        <Fragment key={field.path}>
+          {field.heading && <h3 className="-mb-1 mt-2 text-base font-bold text-[#172b4d] md:col-span-2">{field.heading}</h3>}
+          <label className={`block ${field.type === 'textarea' ? 'md:col-span-2' : ''}`}>
           <span className="mb-1.5 block text-sm font-semibold text-slate-800">
             {field.label}{field.required && <span className="ml-1 text-red-500">*</span>}
           </span>
@@ -227,7 +218,8 @@ function FieldGrid({
               className="h-10 w-full rounded border border-slate-400 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15 read-only:bg-slate-100"
             />
           )}
-        </label>
+          </label>
+        </Fragment>
       ))}
     </div>
   );
@@ -312,17 +304,12 @@ function ProfileRegistration() {
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Registration profile</p>
               <h2 className="mt-1 text-xl font-bold text-[#172b4d]">{section}</h2>
             </div>
-            {section === 'Social Education Profile' && (
-              <p className="text-sm text-slate-500">All fields in this section are optional.</p>
-            )}
             {section === 'Basic Information' && student.name && (
               <p className="text-sm text-slate-500">Institute email: <span className="font-medium text-slate-700">{student.email}</span></p>
             )}
           </div>
           {section === 'Academics' ? (
             <ReadOnlyGrid student={student} fields={academicFields} />
-          ) : section === 'CPI' ? (
-            <ReadOnlyGrid student={student} fields={cpiFields} />
           ) : (
             <FieldGrid fields={fieldsBySection[section]} student={student} onChange={handleChange} />
           )}
@@ -337,7 +324,7 @@ function ProfileRegistration() {
               >
                 Previous
               </button>
-              {section !== 'Academics' && section !== 'CPI' && (
+              {section !== 'Academics' && (
                 <button type="submit" className="rounded bg-[#1b2a4a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#263b60]">
                   Save section
                 </button>
@@ -541,9 +528,6 @@ function CvRegistration() {
                 Optional. Share one folder and keep adding your latest publications and proof documents to it. Make sure anyone with the link can view it. You can change this link at any time.
               </span>
               <input type="url" value={student.cv.drive_Link ?? ''} onChange={(event) => setStudent((current) => ({ ...current, cv: { ...current.cv, drive_Link: event.target.value } }))} placeholder="https://drive.google.com/..." className="mt-1.5 h-10 w-full rounded border border-slate-400 px-3 font-normal outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
-            </label>
-            <label className="text-sm font-semibold text-slate-800">Portfolio link
-              <input type="url" value={student.cv.portfolio_Link ?? ''} onChange={(event) => setStudent((current) => ({ ...current, cv: { ...current.cv, portfolio_Link: event.target.value } }))} placeholder="https://" className="mt-1.5 h-10 w-full rounded border border-slate-400 px-3 font-normal outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
             </label>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">

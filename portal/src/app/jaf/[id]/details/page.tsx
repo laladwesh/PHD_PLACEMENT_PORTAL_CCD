@@ -283,7 +283,7 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                   <div>
                     <h3 className="font-bold text-sm text-gray-900">PhD Placement Drive — Open for Applications</h3>
                     <p className="text-xs text-gray-600 mt-0.5">
-                      Closing date: <strong className="text-amber-800">{job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Not set'}</strong> &bull; Expected Openings: <strong>{job.numOpenings || 5}</strong>
+                      Closing date: <strong className="text-amber-800">{job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Not set'}</strong>
                     </p>
                   </div>
                 </div>
@@ -357,10 +357,12 @@ export default function JAFDetailsPage({ params }: { params: Promise<{ id: strin
                   {job.applicationDeadline ? new Date(job.applicationDeadline).toLocaleDateString() : 'Not set'}
                 </p>
               </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase text-gray-400 mb-1">Expected Recruitments from IIT Guwahati</p>
-                <p className="font-medium text-sm text-gray-900">{job.numOpenings || 5} scholars</p>
-              </div>
+              {!isStudent && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-gray-400 mb-1">Expected Recruitments from IIT Guwahati</p>
+                  <p className="font-medium text-sm text-gray-900">{job.numOpenings || 5} scholars</p>
+                </div>
+              )}
             </div>
           )}
 

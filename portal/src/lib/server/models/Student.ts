@@ -9,23 +9,10 @@ const schoolingSchema = new Schema({
   xii_pass_year: Number,
   xii_exam_board: String,
   xii_exam_medium: String,
+  ug_major_discipline: { type: String, trim: true },
+  ug_cpi: { type: Number, min: 0, max: 10 },
   gap: Number,
   reason_gap: String,
-}, { _id: false });
-
-const semesterSpiSchema = new Schema({
-  spi_1: String,
-  spi_2: String,
-  spi_3: String,
-  spi_4: String,
-  spi_5: String,
-  spi_6: String,
-  spi_7: String,
-  spi_8: String,
-  spi_9: String,
-  spi_10: String,
-  spi_11: String,
-  spi_12: String,
 }, { _id: false });
 
 const cvSchema = new Schema({
@@ -33,16 +20,12 @@ const cvSchema = new Schema({
   cv2: String,
   cv3: String,
   drive_Link: String,
-  portfolio_Link: String,
 }, { _id: false });
 
 const academicDetailsSchema = new Schema({
   major_department: String,
   major_programme: String,
   major_discipline: String,
-  minor_department: String,
-  minor_programme: String,
-  minor_discipline: String,
 }, { _id: false });
 
 const jobApplicationSchema = new Schema({
@@ -67,9 +50,10 @@ const studentSchema = new Schema({
   mobile_campus_alt: Number,
   mobile_home: Number,
   disability: String,
-  linkedin_url: String,
-  google_scholar_link: String,
-  arc_id: String,
+  linkedin_url: { type: String, trim: true },
+  portfolio_url: { type: String, trim: true },
+  google_scholar_url: { type: String, trim: true },
+  orcid_id: { type: String, trim: true },
   flat_no: String,
   address: String,
   city: String,
@@ -78,9 +62,7 @@ const studentSchema = new Schema({
   hostel: String,
   room_number: String,
   major: { type: Schema.Types.ObjectId, ref: 'programmes' },
-  minor: { type: Schema.Types.ObjectId, ref: 'programmes' },
   major_cpi: { type: Number, min: 0, max: 10 },
-  minor_cpi: { type: Number, min: 0, max: 10 },
   academic_details: { type: academicDetailsSchema, default: () => ({}) },
   schooling: { type: schoolingSchema, default: () => ({}) },
   entrance_examination: String,
@@ -88,8 +70,6 @@ const studentSchema = new Schema({
   rank_category: String,
   backlogs: { type: Number, min: 0, default: 0 },
   year_of_admission: Number,
-  year_of_minor_admission: Number,
-  semester_wise_spi: { type: semesterSpiSchema, default: () => ({}) },
   category: {
     type: String,
     enum: ['General', 'SC', 'ST', 'Gen-EWS', 'OBC-NCL', 'General-PwD', 'SC-PwD', 'ST-PwD', 'OBC-PwD', 'EWS-PwD'],

@@ -56,7 +56,11 @@ export async function GET(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ job });
+    const jobResponse = job.toObject();
+    // Intake targets are internal recruitment information and are not disclosed to students.
+    if (role === 'student') delete jobResponse.numOpenings;
+
+    return NextResponse.json({ job: jobResponse });
   } catch (error) {
     console.error('Error fetching job:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -4,7 +4,6 @@ export interface StudentRecord {
   name: string;
   gender?: 'Male' | 'Female' | 'Other';
   major_cpi?: number;
-  minor_cpi?: number;
   dob?: string | Date;
   nationality?: string;
   hostel?: string;
@@ -12,9 +11,6 @@ export interface StudentRecord {
     major_department?: string;
     major_programme?: string;
     major_discipline?: string;
-    minor_department?: string;
-    minor_programme?: string;
-    minor_discipline?: string;
   };
   room_number?: string;
   email: string;
@@ -24,8 +20,9 @@ export interface StudentRecord {
   mobile_home?: number;
   disability?: string;
   linkedin_url?: string;
-  google_scholar_link?: string;
-  arc_id?: string;
+  portfolio_url?: string;
+  google_scholar_url?: string;
+  orcid_id?: string;
   flat_no?: string;
   address?: string;
   city?: string;
@@ -42,6 +39,8 @@ export interface StudentRecord {
     xii_pass_year?: number;
     xii_exam_board?: string;
     xii_exam_medium?: string;
+    ug_major_discipline?: string;
+    ug_cpi?: number;
     gap?: number;
     reason_gap?: string;
   };
@@ -51,16 +50,13 @@ export interface StudentRecord {
     cv2?: string;
     cv3?: string;
     drive_Link?: string;
-    portfolio_Link?: string;
   };
   category?: string;
   backlogs: number;
   year_of_admission?: number;
-  year_of_minor_admission?: number;
   jee_ma_gate_rank?: number;
   rank_category?: string;
   entrance_examination?: string;
-  semester_wise_spi: Record<string, string | undefined>;
   cv_verified: boolean;
   cv_flagged: boolean;
   cv_flag_note: string;
