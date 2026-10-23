@@ -67,6 +67,8 @@ export function Sidebar() {
       return [
         { name: 'Home', href: '/dashboard', icon: <HomeIcon /> },
         { name: 'Job Applications', href: '/jobs', icon: <BriefcaseIcon /> },
+        { name: 'Registered Students', href: '/students', icon: <UserIcon /> },
+        { name: 'Registered Companies', href: '/companies', icon: <BriefcaseIcon /> },
         { name: 'Offers Received', href: '/offers', icon: <CheckCircleIcon /> },
         { name: 'Announcements', href: '/announcements', icon: <BellIcon /> },
         { name: 'Course Structure', href: '/course-structure', icon: <AcademicCapIcon /> },

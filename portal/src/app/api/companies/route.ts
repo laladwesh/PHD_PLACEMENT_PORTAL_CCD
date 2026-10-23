@@ -10,7 +10,7 @@ export async function GET() {
     await connectToDatabase();
     const query = actor.role === 'company' && actor.companyId ? { _id: actor.companyId } : {};
     const companies = await Company.find(query)
-      .select('company_name email company_desc postal_address website_url office_contact organization_type industry_sec first_point second_point createdAt updatedAt')
+      .select('company_name email company_desc postal_address website_url organization_type industry_sec first_point.full_name first_point.email first_point.contact second_point.full_name second_point.email second_point.contact createdAt updatedAt')
       .sort({ company_name: 1 })
       .lean();
     return NextResponse.json({
