@@ -7,6 +7,8 @@ import { createSessionCookie } from '@/lib/server/session';
 import { connectToDatabase } from '@/lib/server/mongodb';
 import PortalUser from '@/lib/server/models/PortalUser';
 import Student from '@/lib/server/models/Student';
+import Admin from '@/lib/server/models/Admin';
+import { bootstrapCoordinatorEmails } from '@/lib/server/adminAccess';
 import jwt from 'jsonwebtoken';
 
 const OAUTH_COOKIE = 'azure_oauth';
@@ -51,14 +53,13 @@ export async function GET(request: NextRequest) {
 
     await connectToDatabase();
     let user = await PortalUser.findOne({ email, active: true }).lean();
-    const bootstrapCoordinators = (process.env.AZURE_COORDINATOR_EMAILS || 'placement.head@iitg.ac.in,amitk@iitg.ac.in')
-      .split(',')
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean);
-
+    const bootstrapCoordinators = bootstrapCoordinatorEmails();
+    // An active administrator record (see /api/admin) also grants coordinator access.
+    const admin = await Admin.findOne({ email, active: true }).lean() as { _id: unknown; name?: string; designation?: string } | null;
 
     const isCoordinator =
       user?.role === 'coordinator' ||
+      Boolean(admin) ||
       bootstrapCoordinators.includes(email) ||
       (iitg && email.startsWith('placement'));
 
@@ -74,8 +75,9 @@ export async function GET(request: NextRequest) {
     if (isCoordinator) {
       role = 'coordinator';
       if (!user) {
-        user = await PortalUser.create({ email, name: name || 'Placement Coordinator', role: 'coordinator' });
+        user = await PortalUser.create({ email, name: admin?.name || name || 'Placement Coordinator', role: 'coordinator' });
       }
+      if (admin) await Admin.updateOne({ _id: admin._id }, { $set: { last_login_at: new Date() } });
     } else {
       role = 'student';
       let student = await Student.findOne({ email }).lean();
@@ -111,8 +113,8 @@ export async function GET(request: NextRequest) {
 
     const profile = {
       role,
-      name: user.name || name,
-      title: role === 'coordinator' ? 'Placement Coordinator' : 'PhD Scholar',
+      name: (role === 'coordinator' && admin?.name) || user.name || name,
+      title: role === 'coordinator' ? (admin?.designation || 'Placement Coordinator') : 'PhD Scholar',
       email: user.email,
       organization: role === 'coordinator' ? 'CCD - IIT Guwahati' : 'IIT Guwahati',
       rollNumber,
