@@ -7,17 +7,19 @@ const editableFields = new Set([
   'name', 'gender', 'dob', 'nationality', 'alt_email', 'mobile_campus',
   'mobile_campus_alt', 'mobile_home', 'disability', 'flat_no',
   'address', 'city', 'state', 'pincode', 'hostel', 'room_number', 'category',
-  'entrance_examination', 'jee_ma_gate_rank', 'rank_category',
+  'entrance_examination', 'jee_ma_gate_rank', 'rank_category', 'major_cpi',
 ]);
 const profileLinkFields = ['linkedin_url', 'portfolio_url', 'google_scholar_url', 'orcid_id'] as const;
 const schoolingFields = new Set([
   'x_percentage', 'x_pass_year', 'x_board', 'x_exam_medium', 'xii_percentage',
   'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'ug_major_discipline', 'ug_cpi',
+  'pg_major_discipline', 'pg_cpi',
   'gap', 'reason_gap',
 ]);
 const linkFields = new Set(['drive_Link']);
 
-// Profile links are mandatory when submitted; the Google Drive folder is optional.
+// LinkedIn is mandatory when submitted. Portfolio, Google Scholar, ORCID iD and the Google Drive folder are
+// optional: a blank value is accepted and clears the field.
 const urlFields = new Set(['linkedin_url', 'portfolio_url', 'google_scholar_url', 'cv.drive_Link']);
 const maxLength: Record<string, number> = { orcid_id: 60 };
 
@@ -73,11 +75,11 @@ export async function PATCH(request: Request) {
 
     for (const field of profileLinkFields) {
       if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
-      const value = body[field];
-      if (typeof value !== 'string' || !value.trim()) {
-        return NextResponse.json({ error: `${field.replaceAll('_', ' ')} is required.` }, { status: 400 });
+      const value = typeof body[field] === 'string' ? (body[field] as string).trim() : '';
+      if (!value && field === 'linkedin_url') {
+        return NextResponse.json({ error: 'linkedin url is required.' }, { status: 400 });
       }
-      update[field] = value.trim();
+      update[field] = value;
     }
 
     if (body.schooling && typeof body.schooling === 'object' && !Array.isArray(body.schooling)) {
@@ -97,11 +99,21 @@ export async function PATCH(request: Request) {
     const invalid = validateOptionalFields(update);
     if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
+    // CPI: a number from 0 to 10. Remember when it actually changed.
+    const current = await getOrCreateStudent(identity);
+    if ('major_cpi' in update) {
+      const cpi = typeof update.major_cpi === 'string' && update.major_cpi.trim() === '' ? NaN : Number(update.major_cpi);
+      if (!Number.isFinite(cpi) || cpi < 0 || cpi > 10) {
+        return NextResponse.json({ error: 'CPI must be a number between 0 and 10.' }, { status: 400 });
+      }
+      update.major_cpi = Math.round(cpi * 100) / 100;
+      if (update.major_cpi !== current.major_cpi) update.cpi_updated_at = new Date();
+    }
+
     if (!Object.keys(update).length) {
       return NextResponse.json({ error: 'No editable registration fields provided.' }, { status: 400 });
     }
 
-    await getOrCreateStudent(identity);
     const student = await Student.findOneAndUpdate(
       { roll_number: identity.rollNumber },
       { $set: update },

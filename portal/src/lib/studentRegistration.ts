@@ -4,6 +4,7 @@ export interface StudentRecord {
   name: string;
   gender?: 'Male' | 'Female' | 'Other';
   major_cpi?: number;
+  cpi_updated_at?: string | Date;
   dob?: string | Date;
   nationality?: string;
   hostel?: string;
@@ -41,6 +42,8 @@ export interface StudentRecord {
     xii_exam_medium?: string;
     ug_major_discipline?: string;
     ug_cpi?: number;
+    pg_major_discipline?: string;
+    pg_cpi?: number;
     gap?: number;
     reason_gap?: string;
   };

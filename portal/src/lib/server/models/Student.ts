@@ -11,6 +11,8 @@ const schoolingSchema = new Schema({
   xii_exam_medium: String,
   ug_major_discipline: { type: String, trim: true },
   ug_cpi: { type: Number, min: 0, max: 10 },
+  pg_major_discipline: { type: String, trim: true },
+  pg_cpi: { type: Number, min: 0, max: 10 },
   gap: Number,
   reason_gap: String,
 }, { _id: false });
@@ -63,6 +65,7 @@ const studentSchema = new Schema({
   room_number: String,
   major: { type: Schema.Types.ObjectId, ref: 'programmes' },
   major_cpi: { type: Number, min: 0, max: 10 },
+  cpi_updated_at: Date,   // set when the scholar changes their own CPI
   academic_details: { type: academicDetailsSchema, default: () => ({}) },
   schooling: { type: schoolingSchema, default: () => ({}) },
   entrance_examination: String,

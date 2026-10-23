@@ -37,7 +37,7 @@ const numericPaths = new Set([
   'roll_number', 'mobile_campus', 'mobile_campus_alt', 'mobile_home', 'pincode',
   'schooling.x_percentage', 'schooling.x_pass_year', 'schooling.xii_percentage',
   'schooling.xii_pass_year', 'schooling.gap', 'year_of_admission',
-  'backlogs', 'jee_ma_gate_rank', 'major_cpi', 'schooling.ug_cpi',
+  'backlogs', 'jee_ma_gate_rank', 'major_cpi', 'schooling.ug_cpi', 'schooling.pg_cpi',
 ]);
 
 const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
@@ -66,9 +66,9 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
   ],
   'Profile Links': [
     { label: 'LinkedIn Profile', path: 'linkedin_url', type: 'url', required: true, placeholder: 'https://www.linkedin.com/in/your-profile' },
-    { label: 'Portfolio Website', path: 'portfolio_url', type: 'url', required: true, placeholder: 'https://your-portfolio.example' },
-    { label: 'Google Scholar Profile', path: 'google_scholar_url', type: 'url', required: true, placeholder: 'https://scholar.google.com/...' },
-    { label: 'ORCID iD', path: 'orcid_id', required: true, placeholder: '0000-0000-0000-0000' },
+    { label: 'Portfolio Website (optional)', path: 'portfolio_url', type: 'url', placeholder: 'https://your-portfolio.example' },
+    { label: 'Google Scholar Profile (optional)', path: 'google_scholar_url', type: 'url', placeholder: 'https://scholar.google.com/...' },
+    { label: 'ORCID iD (optional)', path: 'orcid_id', placeholder: '0000-0000-0000-0000' },
   ],
   'Previous Education Details': [
     { label: 'Percentage', path: 'schooling.x_percentage', type: 'number', heading: 'Class X' },
@@ -81,6 +81,8 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'Class XII exam medium', path: 'schooling.xii_exam_medium' },
     { label: 'Major Discipline', path: 'schooling.ug_major_discipline', required: true, heading: 'Undergraduate' },
     { label: 'CPI', path: 'schooling.ug_cpi', type: 'number', required: true },
+    { label: 'Major Discipline', path: 'schooling.pg_major_discipline', placeholder: 'Leave blank if you have no postgraduate degree', heading: 'Postgraduate (optional)' },
+    { label: 'CPI', path: 'schooling.pg_cpi', type: 'number' },
     { label: 'Education gap (years)', path: 'schooling.gap', type: 'number', heading: 'Other information' },
     { label: 'Reason for gap', path: 'schooling.reason_gap', type: 'textarea' },
   ],
@@ -92,11 +94,15 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
   Academics: [],
 };
 
+// Scholars keep their own CPI up to date; it is used for programme/CPI eligibility on every JAF.
+const cpiFields: FieldDefinition[] = [
+  { label: 'Current CPI (out of 10)', path: 'major_cpi', type: 'number', placeholder: 'e.g. 8.45', heading: 'CPI (you can update this at any time)' },
+];
+
 const academicFields = [
   { label: 'Year of Admission', path: 'year_of_admission' },
   { label: 'Active Backlogs', path: 'backlogs' },
   { label: 'Major Department', path: 'academic_details.major_department' },
-  { label: 'Major CPI', path: 'major_cpi' },
   { label: 'Major Programme', path: 'academic_details.major_programme' },
   { label: 'Major Discipline', path: 'academic_details.major_discipline' },
 ];
@@ -309,7 +315,10 @@ function ProfileRegistration() {
             )}
           </div>
           {section === 'Academics' ? (
-            <ReadOnlyGrid student={student} fields={academicFields} />
+            <div className="space-y-8">
+              <ReadOnlyGrid student={student} fields={academicFields} />
+              <FieldGrid fields={cpiFields} student={student} onChange={handleChange} />
+            </div>
           ) : (
             <FieldGrid fields={fieldsBySection[section]} student={student} onChange={handleChange} />
           )}
