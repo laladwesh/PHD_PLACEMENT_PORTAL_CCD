@@ -336,7 +336,7 @@ export async function seedAllDatabaseData() {
       company: companies[3]._id,
       jobDesignation: 'Senior AI/ML Researcher',
       job_designation: 'Senior AI/ML Researcher',
-      status: 'Changes Requested',
+      status: 'Unapproved',
       feedback: 'Please clarify required GPU cluster experience and accommodation details.',
       jobDescription: {
         mode: 'html',

@@ -5,9 +5,6 @@ import Link from 'next/link';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useUserRole } from '@/lib/auth';
 import { DetailedJAF, JAFStatus } from '@/lib/types';
-import { JAFReviewModal } from '@/components/coordinator/JAFReviewModal';
-import { EditJAFModal } from '@/components/coordinator/EditJAFModal';
-import { toast } from '@/components/ui/Toast';
 import { loadStudentRecord, StudentRecord } from '@/lib/studentRegistration';
 
 // Icons
@@ -66,10 +63,8 @@ export default function DashboardPage() {
   const { isCoordinator, isStudent, isCompany, profile } = useUserRole();
   const [jobs, setJobs] = useState<DetailedJAF[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
-  const [reviewJaf, setReviewJaf] = useState<DetailedJAF | null>(null);
-  const [editJaf, setEditJaf] = useState<DetailedJAF | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
-  const [coordinatorTab, setCoordinatorTab] = useState<'all' | 'pending' | 'approved' | 'changes'>('all');
+  const [coordinatorTab, setCoordinatorTab] = useState<'all' | 'pending' | 'incomplete' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [studentRec, setStudentRec] = useState<StudentRecord | null>(null);
@@ -162,72 +157,6 @@ export default function DashboardPage() {
     }
   }, [profile.name, profile.title, profile.email, isStudent]);
 
-  const handleApprove = async (id: number | string, applicationDeadline: string) => {
-    const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'approve', applicationDeadline }),
-    });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      toast.error(payload.error || 'Unable to approve this JAF.');
-      return;
-    }
-    const closingDate = new Date(`${applicationDeadline}T23:59:59`).toLocaleDateString();
-    setJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: 'Approved' as JAFStatus, deadline: closingDate, feedback: undefined } : j))
-    );
-    if (reviewJaf?.id === id) {
-      setReviewJaf((prev) => (prev ? { ...prev, status: 'Approved', deadline: closingDate, feedback: undefined } : null));
-    }
-    toast.success(`Job Application #${id} approved successfully.`);
-  };
-
-  const handleRequestChanges = async (id: number | string, feedback: string) => {
-    const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'request_changes', feedback }),
-    });
-    if (!response.ok) {
-      toast.error('Unable to request changes.');
-      return;
-    }
-    setJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: 'Changes Requested' as JAFStatus, feedback } : j))
-    );
-    if (reviewJaf?.id === id) {
-      setReviewJaf((prev) => (prev ? { ...prev, status: 'Changes Requested', feedback } : null));
-    }
-    toast.info(`Revision request sent to recruiter for #${id}.`);
-  };
-
-  const handleReject = async (id: number | string, reason: string) => {
-    const response = await fetch(`/phdplacement/api/jobs/${id}/review`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'reject', feedback: reason }),
-    });
-    if (!response.ok) {
-      toast.error('Unable to reject this JAF.');
-      return;
-    }
-    setJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: 'Rejected' as JAFStatus, feedback: reason } : j))
-    );
-    setReviewJaf(null);
-    toast.error(`Job Application #${id} rejected.`);
-  };
-
-  const handleSaveJaf = (updated: DetailedJAF) => {
-    setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
-    if (reviewJaf?.id === updated.id) {
-      setReviewJaf(updated);
-    }
-    setEditJaf(null);
-    toast.success(`Job application #${updated.id} (${updated.designation}) updated successfully.`);
-  };
-
   // Status badge helper
   const renderStatusBadge = (status: JAFStatus) => {
     if (status === 'Approved') {
@@ -246,14 +175,6 @@ export default function DashboardPage() {
         </span>
       );
     }
-    if (status === 'Changes Requested') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-          Revision Needed
-        </span>
-      );
-    }
     if (status === 'Rejected') {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
@@ -264,7 +185,7 @@ export default function DashboardPage() {
     }
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-        Draft
+        Incomplete
       </span>
     );
   };
@@ -692,9 +613,10 @@ export default function DashboardPage() {
   // ==========================================
   // COORDINATOR & RECRUITER VIEW
   // ==========================================
-  const pendingCount = jobs.filter((j) => j.status === 'Unapproved' || j.status === 'Changes Requested').length;
+  const pendingCount = jobs.filter((j) => j.status === 'Unapproved').length;
   const approvedCount = jobs.filter((j) => j.status === 'Approved').length;
-  const changesCount = jobs.filter((j) => j.status === 'Changes Requested').length;
+  const incompleteCount = jobs.filter((j) => j.status === 'Incomplete').length;
+  const rejectedCount = jobs.filter((j) => j.status === 'Rejected').length;
 
   // Filtered jobs according to active tab and search query
   const filteredJobs = jobs.filter((j) => {
@@ -705,7 +627,8 @@ export default function DashboardPage() {
     if (!matchesSearch) return false;
     if (coordinatorTab === 'pending') return j.status === 'Unapproved';
     if (coordinatorTab === 'approved') return j.status === 'Approved';
-    if (coordinatorTab === 'changes') return j.status === 'Changes Requested';
+    if (coordinatorTab === 'incomplete') return j.status === 'Incomplete';
+    if (coordinatorTab === 'rejected') return j.status === 'Rejected';
     return true;
   });
 
@@ -839,18 +762,26 @@ export default function DashboardPage() {
             >
               Approved ({approvedCount})
             </button>
-            {changesCount > 0 && (
-              <button
-                onClick={() => setCoordinatorTab('changes')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  coordinatorTab === 'changes'
-                    ? 'bg-[#1B2A4A] text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Revisions ({changesCount})
-              </button>
-            )}
+            <button
+              onClick={() => setCoordinatorTab('incomplete')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                coordinatorTab === 'incomplete'
+                  ? 'bg-[#1B2A4A] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Incomplete ({incompleteCount})
+            </button>
+            <button
+              onClick={() => setCoordinatorTab('rejected')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                coordinatorTab === 'rejected'
+                  ? 'bg-[#1B2A4A] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Rejected ({rejectedCount})
+            </button>
           </div>
 
           {/* Search Box */}
@@ -940,27 +871,18 @@ export default function DashboardPage() {
                         )
                       ) : (
                         <div className="flex items-center justify-end gap-2 text-xs">
-                          <button
-                            onClick={() => setReviewJaf(job)}
+                          <Link
+                            href={`/jaf/${job.id}/details`}
                             className="border border-gray-300 text-gray-700 text-xs px-2.5 py-1 rounded-md hover:bg-gray-50 transition-colors font-medium cursor-pointer"
                           >
                             Inspect
-                          </button>
-                          <button
-                            onClick={() => setEditJaf(job)}
+                          </Link>
+                          <Link
+                            href={`/jaf/new?edit=${job.id}`}
                             className="border border-gray-300 text-gray-700 text-xs px-2.5 py-1 rounded-md hover:bg-gray-50 transition-colors font-medium cursor-pointer"
                           >
                             Edit
-                          </button>
-
-                          {isCoordinator && job.status === 'Unapproved' && (
-                            <button
-                              onClick={() => setReviewJaf(job)}
-                              className="bg-emerald-700 text-white text-xs px-2.5 py-1 rounded-md hover:bg-emerald-800 transition-colors font-medium cursor-pointer shadow-2xs"
-                            >
-                              Approve
-                            </button>
-                          )}
+                          </Link>
 
                           <Link
                             href={`/jaf/${job.id}/applicants`}
@@ -994,24 +916,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* JAF Review & Moderation Modal */}
-      <JAFReviewModal
-        jaf={reviewJaf}
-        isOpen={!!reviewJaf}
-        onClose={() => setReviewJaf(null)}
-        onApprove={handleApprove}
-        onRequestChanges={handleRequestChanges}
-        onReject={handleReject}
-        onEdit={(jaf) => setEditJaf(jaf)}
-      />
-
-      {/* Edit JAF Modal */}
-      <EditJAFModal
-        jaf={editJaf}
-        isOpen={!!editJaf}
-        onClose={() => setEditJaf(null)}
-        onSave={handleSaveJaf}
-      />
     </DashboardLayout>
   );
 }

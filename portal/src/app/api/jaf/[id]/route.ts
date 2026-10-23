@@ -63,6 +63,9 @@ export async function GET(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
+    if (job.status === 'Changes Requested') job.status = 'Unapproved';
+    if (job.status === 'Complete') job.status = 'Incomplete';
+
     const jobResponse = job.toObject();
     // Intake targets are internal recruitment information and are not disclosed to students.
     if (role === 'student') delete jobResponse.numOpenings;

@@ -303,7 +303,6 @@ export function EditJAFModal({ jaf, isOpen, onClose, onSave }: EditJAFModalProps
                 >
                   <option value="Unapproved">Unapproved</option>
                   <option value="Approved">Approved</option>
-                  <option value="Changes Requested">Changes Requested</option>
                   <option value="Incomplete">Incomplete</option>
                   <option value="Rejected">Rejected</option>
                 </select>

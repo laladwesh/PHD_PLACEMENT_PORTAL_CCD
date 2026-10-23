@@ -2,7 +2,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export interface IJob extends Document {
   companyId?: mongoose.Types.ObjectId;
-  status: 'Incomplete' | 'Unapproved' | 'Approved' | 'Changes Requested' | 'Rejected';
+  status: 'Incomplete' | 'Unapproved' | 'Approved' | 'Rejected';
   jobDesignation?: string;
   jobDescription?: { mode: 'html' | 'file'; content: string; fileUrl?: string };
   placeOfPosting?: string;
@@ -64,7 +64,7 @@ const JobSchema = new Schema<IJob>(
     companyId: { type: Schema.Types.ObjectId, ref: 'Company' },
     status: {
       type: String,
-      enum: ['Incomplete', 'Unapproved', 'Approved', 'Changes Requested', 'Rejected'],
+      enum: ['Incomplete', 'Unapproved', 'Approved', 'Rejected'],
       default: 'Incomplete',
     },
     jobDesignation: { type: String },

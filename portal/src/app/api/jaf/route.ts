@@ -5,6 +5,12 @@ import Student from '@/lib/server/models/Student';
 import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 import { ELIGIBILITY_STUDENT_FIELDS, evaluateJafEligibility } from '@/lib/server/jafEligibility';
 
+function currentStatus(status: unknown) {
+  if (status === 'Changes Requested') return 'Unapproved';
+  if (status === 'Complete') return 'Incomplete';
+  return status;
+}
+
 export async function GET() {
   const actor = await requireRole('coordinator', 'company', 'student');
   if (isAuthorizationError(actor)) return actor;
@@ -54,7 +60,7 @@ export async function GET() {
         const doc = job.toObject ? job.toObject() : { ...job };
         const companyObj = doc.companyId && typeof doc.companyId === 'object' ? doc.companyId : null;
         delete doc.numOpenings;
-        return { ...doc, company: companyObj?.company_name || doc.companyName || 'Company' };
+        return { ...doc, status: currentStatus(doc.status), company: companyObj?.company_name || doc.companyName || 'Company' };
       });
       return NextResponse.json({ jobs: enrichedJobs, appliedJobIds: [...appliedJobIdSet] });
     } else {
@@ -69,6 +75,7 @@ export async function GET() {
       const companyObj = doc.companyId && typeof doc.companyId === 'object' ? doc.companyId : null;
       return {
         ...doc,
+        status: currentStatus(doc.status),
         company: companyObj?.company_name || doc.companyName || 'Company',
       };
     });

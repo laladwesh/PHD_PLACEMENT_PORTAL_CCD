@@ -7,9 +7,8 @@ import { isAuthorizationError, requireRole } from '@/lib/server/authorization';
 
 type RouteContext = { params: Promise<{ id: string }> };
 const transitions: Record<string, Set<string>> = {
-  Unapproved: new Set(['Approved', 'Changes Requested', 'Rejected']),
-  'Changes Requested': new Set(['Approved', 'Rejected', 'Changes Requested']),
-  Incomplete: new Set(['Approved', 'Changes Requested', 'Rejected']),
+  Unapproved: new Set(['Approved', 'Rejected']),
+  Incomplete: new Set(['Approved', 'Rejected']),
 };
 
 export async function PATCH(request: Request, { params }: RouteContext) {
@@ -23,10 +22,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   } catch {
     return NextResponse.json({ error: 'Review data must be valid JSON.' }, { status: 400 });
   }
-  const status = body.action === 'approve' ? 'Approved' : body.action === 'request_changes' ? 'Changes Requested' : body.action === 'reject' ? 'Rejected' : null;
+  const status = body.action === 'approve' ? 'Approved' : body.action === 'reject' ? 'Rejected' : null;
   const feedback = typeof body.feedback === 'string' ? body.feedback.trim() : '';
-  if (!status) return NextResponse.json({ error: 'Choose approve, request_changes, or reject.' }, { status: 400 });
-  if ((status === 'Changes Requested' || status === 'Rejected') && !feedback) return NextResponse.json({ error: 'Feedback is required for this review decision.' }, { status: 400 });
+  if (!status) return NextResponse.json({ error: 'Choose approve or reject.' }, { status: 400 });
+  if (status === 'Rejected' && !feedback) return NextResponse.json({ error: 'Feedback is required for this review decision.' }, { status: 400 });
   if (feedback.length > 2000) return NextResponse.json({ error: 'Feedback must be 2000 characters or fewer.' }, { status: 400 });
 
   let applicationDeadline: Date | undefined;
@@ -49,7 +48,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   await connectToDatabase();
   const job = await Jobs.findById(id).select('status feedback').lean();
   if (!job) return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
-  if (!transitions[job.status]?.has(status)) return NextResponse.json({ error: `A ${job.status} JAF cannot be moved to ${status}.` }, { status: 409 });
+  const currentStatus = job.status === 'Changes Requested'
+    ? 'Unapproved'
+    : job.status === 'Complete'
+      ? 'Incomplete'
+      : job.status;
+  if (!transitions[currentStatus]?.has(status)) return NextResponse.json({ error: `A ${currentStatus} JAF cannot be moved to ${status}.` }, { status: 409 });
   const update = {
     status,
     feedback: status === 'Approved' ? '' : feedback,

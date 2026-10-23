@@ -1,4 +1,4 @@
-export type JAFStatus = 'Approved' | 'Unapproved' | 'Changes Requested' | 'Incomplete' | 'Rejected';
+export type JAFStatus = 'Approved' | 'Unapproved' | 'Incomplete' | 'Rejected';
 
 export interface JobApplication {
   id: number | string;
