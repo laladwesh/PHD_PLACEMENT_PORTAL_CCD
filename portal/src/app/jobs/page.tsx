@@ -22,9 +22,8 @@ export default function JobsPage() {
   const [editJaf, setEditJaf] = useState<DetailedJAF | null>(null);
 
   const studentTabs: { key: TabKey; label: string }[] = [
-    { key: 'all', label: 'All Approved Drives' },
-    { key: 'eligible', label: 'Eligible for Me' },
-    { key: 'applied', label: 'My Applications' },
+    { key: 'eligible', label: 'Eligible Applications' },
+    { key: 'applied', label: 'Applied Applications' },
   ];
 
   const companyTabs: { key: TabKey; label: string }[] = [
@@ -41,6 +40,10 @@ export default function JobsPage() {
   ];
 
   const tabs = isStudent ? studentTabs : isCompany ? companyTabs : coordinatorTabs;
+
+  useEffect(() => {
+    setActiveTab(isStudent ? 'eligible' : 'all');
+  }, [isStudent]);
 
   useEffect(() => {
     try {
@@ -198,7 +201,6 @@ export default function JobsPage() {
 
   const filteredJobs = jobs.filter((job) => {
     if (isStudent) {
-      if (activeTab === 'all' && job.status !== 'Approved') return false;
       if (activeTab === 'eligible' && job.status !== 'Approved') return false;
       if (activeTab === 'applied' && !appliedJobIds.has(String(job.id))) return false;
     } else {
@@ -229,26 +231,16 @@ export default function JobsPage() {
 
   if (isStudent) {
     const totalApplied = appliedJobIds.size;
-    const totalOpen = jobs.filter((j) => j.status === 'Approved').length;
 
     return (
       <DashboardLayout>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+        <div className="mb-2">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Job Applications & Drives</h1>
             <p className="text-xs text-gray-500 mt-1">
-              Browse approved PhD recruitment drives, check role details and compensation, and submit applications.
+              Browse eligible PhD recruitment drives, check role details and compensation, and submit applications.
             </p>
-          </div>
-          <div className="flex items-center gap-3 text-xs bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-2xs self-start sm:self-auto">
-            <span className="text-gray-500">
-              Open Drives: <strong className="text-[#1B2A4A] font-bold">{totalOpen}</strong>
-            </span>
-            <span className="text-gray-300">|</span>
-            <span className="text-gray-500">
-              Applied: <strong className="text-emerald-700 font-bold">{totalApplied}</strong>
-            </span>
           </div>
         </div>
 
