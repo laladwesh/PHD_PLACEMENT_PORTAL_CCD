@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, Fragment, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useUserRole } from '@/lib/auth';
+import { toast } from '@/components/ui/Toast';
 import { REGISTRATION_FEE } from '@/lib/fees';
 import {
   loadStudentRecord,
@@ -327,8 +328,11 @@ function ProfileRegistration() {
     try {
       setStudent(await saveStudentRecord(student));
       setMessage('Profile saved');
-    } catch {
-      setMessage('Could not save your profile. Check the MongoDB connection and try again.');
+      toast.success(`${section} saved`);
+    } catch (error) {
+      const reason = error instanceof Error && error.message ? error.message : 'Could not save your profile. Please try again.';
+      setMessage(reason);
+      toast.error(reason);
     }
   };
   const currentIndex = sections.indexOf(section);
@@ -457,8 +461,11 @@ function CvRegistration() {
       const result = await uploadStudentFile(slot, file);
       setStudent(result.student);
       setMessage(`${result.fileName} uploaded`);
+      toast.success(`${result.fileName} uploaded`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Upload failed. Check the MongoDB connection and try again.');
+      const reason = error instanceof Error ? error.message : 'Upload failed. Please try again.';
+      setMessage(reason);
+      toast.error(reason);
     }
   };
 
@@ -601,8 +608,8 @@ function CvRegistration() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
             <p role="status" className="text-sm text-slate-500">{ready ? message : 'Loading your uploads...'}</p>
             <button type="button" onClick={async () => {
-              try { setStudent(await saveStudentRecord(student)); setMessage('Links saved'); }
-              catch (error) { setMessage(error instanceof Error ? error.message : 'Could not save links.'); }
+              try { setStudent(await saveStudentRecord(student)); setMessage('Links saved'); toast.success('Links saved'); }
+              catch (error) { const reason = error instanceof Error ? error.message : 'Could not save links.'; setMessage(reason); toast.error(reason); }
             }} className="rounded bg-[#1b2a4a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#263b60]">Save links</button>
           </div>
         </section>
