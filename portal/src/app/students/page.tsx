@@ -24,7 +24,7 @@ export default function RegisteredStudentsPage() {
   const { isCoordinator } = useUserRole();
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState('');
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -32,13 +32,14 @@ export default function RegisteredStudentsPage() {
 
   // Search is applied on the server so it covers every scholar, not just the page on screen.
   useEffect(() => {
-    const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); setLoading(true); }, 300);
+    const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
   useEffect(() => {
     if (!isCoordinator) return;
     let active = true;
+    const key = `${page}|${query}`;
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
     if (query) params.set('search', query);
     fetch(`/phdplacement/api/students?${params}`, { credentials: 'include', cache: 'no-store' })
@@ -48,11 +49,13 @@ export default function RegisteredStudentsPage() {
         if (active) { setStudents(Array.isArray(data.students) ? data.students : []); setTotal(Number(data.count) || 0); setError(''); }
       })
       .catch((reason: unknown) => active && setError(reason instanceof Error ? reason.message : 'Unable to load registered students.'))
-      .finally(() => active && setLoading(false));
+      .finally(() => active && setLoadedKey(key));
     return () => { active = false; };
   }, [isCoordinator, page, query]);
 
-  const goTo = (next: number) => { setLoading(true); setPage(next); };
+  const goTo = (next: number) => setPage(next);
+  // Loading is derived: the data on screen belongs to a different page/search than the one asked for.
+  const loading = loadedKey !== `${page}|${query}`;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const [savingRoll, setSavingRoll] = useState<number | null>(null);
