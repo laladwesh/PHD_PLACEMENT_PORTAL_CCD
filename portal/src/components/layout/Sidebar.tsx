@@ -149,9 +149,14 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-5 text-xs text-gray-800 font-medium border-t border-gray-50">
+      <a
+        href="https://iitg.ac.in/dday"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block border-t border-gray-100 px-5 py-6 text-sm font-semibold leading-snug text-[#1B2A4A] hover:bg-gray-50 hover:underline"
+      >
         Technical Support Team, CCD, IITG
-      </div>
+      </a>
     </div>
   );
 }
