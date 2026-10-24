@@ -3,7 +3,7 @@ import Admin from '@/lib/server/models/Admin';
 import AuditEvent from '@/lib/server/models/AuditEvent';
 import { adminDto, adminErrorResponse, isActorError, pickAdminFields, requireAdminActor } from '@/lib/server/adminAccess';
 
-// GET /api/admin/me: the signed-in coordinator's own administrator profile (null if they have none yet).
+// GET /api/administrators/me: the signed-in coordinator's own administrator profile (null if they have none yet).
 export async function GET() {
   const actor = await requireAdminActor();
   if (isActorError(actor)) return actor;
@@ -15,8 +15,8 @@ export async function GET() {
   });
 }
 
-// PATCH /api/admin/me: update your own contact details (name, designation, department, phone).
-// Role, access and email can only be changed by a super admin through /api/admin/:id.
+// PATCH /api/administrators/me: update your own contact details (name, designation, department, phone).
+// Role, access and email can only be changed by a super admin through /api/administrators/:id.
 export async function PATCH(request: NextRequest) {
   const actor = await requireAdminActor();
   if (isActorError(actor)) return actor;

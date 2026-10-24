@@ -20,7 +20,7 @@ export type AdminActor = {
 };
 
 /**
- * Everyone using /api/admin must be a signed-in coordinator. With `superOnly`, they must also be a
+ * Everyone using /api/administrators must be a signed-in coordinator. With `superOnly`, they must also be a
  * super admin (an active super_admin record, or listed in AZURE_COORDINATOR_EMAILS).
  */
 export async function requireAdminActor(options: { superOnly?: boolean } = {}): Promise<AdminActor | NextResponse> {

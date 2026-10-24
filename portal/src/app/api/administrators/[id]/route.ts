@@ -13,7 +13,7 @@ async function loadTarget(id: string) {
   return { admin };
 }
 
-// GET /api/admin/:id
+// GET /api/administrators/:id
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   const actor = await requireAdminActor();
   if (isActorError(actor)) return actor;
@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   return NextResponse.json({ admin: adminDto(target.admin as never) });
 }
 
-// PATCH /api/admin/:id: edit details, role or access. Super admins only.
+// PATCH /api/administrators/:id: edit details, role or access. Super admins only.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const actor = await requireAdminActor({ superOnly: true });
   if (isActorError(actor)) return actor;
@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 }
 
-// DELETE /api/admin/:id: deactivate (the record is kept so history and audit trails stay intact). Super admins only.
+// DELETE /api/administrators/:id: deactivate (the record is kept so history and audit trails stay intact). Super admins only.
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   const actor = await requireAdminActor({ superOnly: true });
   if (isActorError(actor)) return actor;

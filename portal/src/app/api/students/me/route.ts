@@ -11,7 +11,7 @@ const editableFields = new Set([
   'address', 'city', 'state', 'pincode', 'hostel', 'room_number', 'category',
   'entrance_examination', 'jee_ma_gate_rank', 'rank_category', 'major_cpi', 'thesis_title',
 ]);
-const profileLinkFields = ['linkedin_url', 'portfolio_url', 'google_scholar_url', 'orcid_id'] as const;
+const profileLinkFields = ['linkedin_url', 'portfolio_url', 'google_scholar_url', 'researchgate_url', 'orcid_id'] as const;
 const schoolingFields = new Set([
   'x_percentage', 'x_pass_year', 'x_board', 'x_exam_medium', 'xii_percentage',
   'xii_pass_year', 'xii_exam_board', 'xii_exam_medium', 'ug_major_discipline', 'ug_cpi',
@@ -20,9 +20,9 @@ const schoolingFields = new Set([
 ]);
 const linkFields = new Set(['drive_Link']);
 
-// LinkedIn is mandatory when submitted. Portfolio, Google Scholar, ORCID iD and the Google Drive folder are
+// LinkedIn is mandatory when submitted. Portfolio, Google Scholar, ResearchGate, ORCID iD and the Google Drive folder are
 // optional: a blank value is accepted and clears the field.
-const urlFields = new Set(['linkedin_url', 'portfolio_url', 'google_scholar_url', 'cv.drive_Link']);
+const urlFields = new Set(['linkedin_url', 'portfolio_url', 'google_scholar_url', 'researchgate_url', 'cv.drive_Link']);
 const maxLength: Record<string, number> = { orcid_id: 60, thesis_title: 300 };
 
 // Up to 10 free-text keywords, each up to 60 characters. Blanks and repeats are dropped.

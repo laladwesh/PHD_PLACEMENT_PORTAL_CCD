@@ -23,6 +23,7 @@ export interface StudentRecord {
   linkedin_url?: string;
   portfolio_url?: string;
   google_scholar_url?: string;
+  researchgate_url?: string;
   orcid_id?: string;
   thesis_title?: string;
   keywords?: string[];

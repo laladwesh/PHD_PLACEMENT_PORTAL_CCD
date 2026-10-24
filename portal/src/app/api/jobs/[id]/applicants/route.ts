@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     .populate({
       path: 'selectedStudents',
       model: 'student',
-      select: 'roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url portfolio_url google_scholar_url orcid_id cv.cv1 cv.cv2 cv.drive_Link thesis_title keywords',
+      select: 'roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url portfolio_url google_scholar_url researchgate_url orcid_id cv.cv1 cv.cv2 cv.drive_Link thesis_title keywords',
     })
     .lean() as any;
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   // applications saved before the selectedStudents link was introduced or if
   // an earlier partial write left that array out of sync.
   const studentsWithApplication = await Student.find({ 'jobs_applied.job': job._id })
-    .select('roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url portfolio_url google_scholar_url orcid_id cv.cv1 cv.cv2 cv.drive_Link thesis_title keywords')
+    .select('roll_number name email major_cpi academic_details status cv_verified cv_flagged registration_complete jobs_applied linkedin_url portfolio_url google_scholar_url researchgate_url orcid_id cv.cv1 cv.cv2 cv.drive_Link thesis_title keywords')
     .lean() as any[];
 
   const applicantsById = new Map<string, any>();
@@ -79,6 +79,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         linkedin_url: student.linkedin_url || '',
         portfolio_url: student.portfolio_url || '',
         google_scholar_url: student.google_scholar_url || '',
+        researchgate_url: student.researchgate_url || '',
         orcid_id: student.orcid_id || '',
         drive_link: student.cv?.drive_Link || '',
         thesis_title: student.thesis_title || '',

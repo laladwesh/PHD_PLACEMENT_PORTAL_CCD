@@ -70,6 +70,7 @@ const fieldsBySection: Record<ProfileSection, FieldDefinition[]> = {
     { label: 'LinkedIn Profile', path: 'linkedin_url', type: 'url', required: true, placeholder: 'https://www.linkedin.com/in/your-profile' },
     { label: 'Portfolio Website (optional)', path: 'portfolio_url', type: 'url', placeholder: 'https://your-portfolio.example' },
     { label: 'Google Scholar Profile (optional)', path: 'google_scholar_url', type: 'url', placeholder: 'https://scholar.google.com/...' },
+    { label: 'ResearchGate Profile (optional)', path: 'researchgate_url', type: 'url', placeholder: 'https://www.researchgate.net/profile/...' },
     { label: 'ORCID iD (optional)', path: 'orcid_id', placeholder: '0000-0000-0000-0000' },
   ],
   'Research Profile': [

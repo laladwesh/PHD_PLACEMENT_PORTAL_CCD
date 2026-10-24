@@ -53,6 +53,7 @@ const studentSchema = new Schema({
   linkedin_url: { type: String, trim: true },
   portfolio_url: { type: String, trim: true },
   google_scholar_url: { type: String, trim: true },
+  researchgate_url: { type: String, trim: true },
   orcid_id: { type: String, trim: true },
   thesis_title: { type: String, trim: true, maxlength: 300 },
   keywords: {

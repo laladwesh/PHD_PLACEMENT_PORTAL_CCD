@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     let user = await PortalUser.findOne({ email, active: true }).lean();
     const bootstrapCoordinators = bootstrapCoordinatorEmails();
-    // An active administrator record (see /api/admin) also grants coordinator access.
+    // An active administrator record (see /api/administrators) also grants coordinator access.
     const admin = await Admin.findOne({ email, active: true }).lean() as { _id: unknown; name?: string; designation?: string } | null;
 
     const isCoordinator =

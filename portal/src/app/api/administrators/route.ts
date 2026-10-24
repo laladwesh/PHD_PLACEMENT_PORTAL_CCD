@@ -5,7 +5,7 @@ import { adminDto, adminErrorResponse, isActorError, pickAdminFields, requireAdm
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// GET /api/admin?search=&role=&active=true|false&page=&limit=
+// GET /api/administrators?search=&role=&active=true|false&page=&limit=
 // Any signed-in coordinator may read the administrator directory.
 export async function GET(request: NextRequest) {
   const actor = await requireAdminActor();
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/admin: add an administrator. Super admins only.
+// POST /api/administrators: add an administrator. Super admins only.
 export async function POST(request: NextRequest) {
   const actor = await requireAdminActor({ superOnly: true });
   if (isActorError(actor)) return actor;

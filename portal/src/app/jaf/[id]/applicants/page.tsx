@@ -25,6 +25,7 @@ interface Candidate {
   supervisorNoc?: boolean;
   expectedGraduation?: string;
   googleScholarUrl?: string;
+  researchgateUrl?: string;
   linkedinUrl?: string;
   portfolioUrl?: string;
   driveLink?: string;
@@ -118,6 +119,7 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                   supervisorNoc: true,
                   expectedGraduation: 'May 2027',
                   googleScholarUrl: s.google_scholar_url || '',
+                  researchgateUrl: s.researchgate_url || '',
                   linkedinUrl: s.linkedin_url || '',
                   portfolioUrl: s.portfolio_url || '',
                   driveLink: s.drive_link || '',
@@ -657,6 +659,7 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                 <dl className="grid grid-cols-2 gap-3 text-xs bg-gray-50 border border-gray-200 rounded-md p-3">
                   {([
                     ['Google Scholar', selectedCandidate.googleScholarUrl],
+                    ['ResearchGate', selectedCandidate.researchgateUrl],
                     ['LinkedIn', selectedCandidate.linkedinUrl],
                     ['Portfolio', selectedCandidate.portfolioUrl],
                     ['Drive folder (publications & proofs)', selectedCandidate.driveLink],
