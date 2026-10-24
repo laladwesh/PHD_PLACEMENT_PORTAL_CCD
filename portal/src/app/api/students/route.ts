@@ -16,7 +16,15 @@ export async function GET(request: NextRequest) {
     const query: Record<string, unknown> = {};
     if (review === 'pending') query.cv_verified = false;
     if (review === 'flagged') query.cv_flagged = true;
-    if (search) query.$or = [{ name: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }, { roll_number: Number(search) || -1 }];
+    if (search) {
+      const pattern = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = [
+        { name: { $regex: pattern, $options: 'i' } },
+        { email: { $regex: pattern, $options: 'i' } },
+        { 'academic_details.major_department': { $regex: pattern, $options: 'i' } },
+        { roll_number: Number(search) || -1 },
+      ];
+    }
     const [students, count] = await Promise.all([
       Student.find(query).select('roll_number name email major_cpi academic_details status cv_verified cv_flagged fee_paid fee_remaining registration_complete is_eligible_for_placement cv').sort({ roll_number: 1 }).skip((page - 1) * limit).limit(limit).lean(),
       Student.countDocuments(query),

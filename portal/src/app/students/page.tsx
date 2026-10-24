@@ -10,7 +10,7 @@ type Student = {
   name: string;
   email: string;
   major_cpi?: number;
-  academic_details?: { major_programme?: string; major_discipline?: string };
+  academic_details?: { major_programme?: string; major_department?: string };
   registration_complete?: boolean;
   cv_verified?: boolean;
   fee_paid?: boolean;
@@ -18,26 +18,42 @@ type Student = {
   cv?: { cv1?: string; cv2?: string };
 };
 
+const PAGE_SIZE = 25;
+
 export default function RegisteredStudentsPage() {
   const { isCoordinator } = useUserRole();
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [query, setQuery] = useState('');
+
+  // Search is applied on the server so it covers every scholar, not just the page on screen.
+  useEffect(() => {
+    const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); setLoading(true); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (!isCoordinator) return;
     let active = true;
-    fetch('/phdplacement/api/students?limit=100', { credentials: 'include', cache: 'no-store' })
+    const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+    if (query) params.set('search', query);
+    fetch(`/phdplacement/api/students?${params}`, { credentials: 'include', cache: 'no-store' })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'Unable to load registered students.');
-        if (active) setStudents(Array.isArray(data.students) ? data.students : []);
+        if (active) { setStudents(Array.isArray(data.students) ? data.students : []); setTotal(Number(data.count) || 0); setError(''); }
       })
       .catch((reason: unknown) => active && setError(reason instanceof Error ? reason.message : 'Unable to load registered students.'))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [isCoordinator]);
+  }, [isCoordinator, page, query]);
+
+  const goTo = (next: number) => { setLoading(true); setPage(next); };
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const [savingRoll, setSavingRoll] = useState<number | null>(null);
 
@@ -62,10 +78,7 @@ export default function RegisteredStudentsPage() {
     }
   };
 
-  const filteredStudents = students.filter((student) => {
-    const text = `${student.name} ${student.email} ${student.roll_number} ${student.academic_details?.major_programme || ''} ${student.academic_details?.major_discipline || ''}`.toLowerCase();
-    return text.includes(search.trim().toLowerCase());
-  });
+  const filteredStudents = students;
 
   if (!isCoordinator) return <DashboardLayout><p className="rounded-lg bg-white p-6 text-sm text-slate-700">Coordinator access is required to view registered students.</p></DashboardLayout>;
 
@@ -78,22 +91,32 @@ export default function RegisteredStudentsPage() {
       </div>
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4">
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, email, roll number, programme or discipline..." className="w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
-          <span className="text-xs font-medium text-slate-500">{filteredStudents.length} scholar{filteredStudents.length === 1 ? '' : 's'}</span>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, email, roll number, programme or department..." className="w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1b2a4a] focus:ring-2 focus:ring-[#1b2a4a]/15" />
+          <span className="text-xs font-medium text-slate-500">{total} scholar{total === 1 ? '' : 's'}</span>
         </div>
         {error ? <p role="alert" className="m-4 rounded-md bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Student</th><th className="px-4 py-3">IITG webmail</th><th className="px-4 py-3">Roll number</th><th className="px-4 py-3">Programme</th><th className="px-4 py-3">Discipline</th><th className="px-4 py-3">CPI</th><th className="px-4 py-3">CV / Verification</th><th className="px-4 py-3">Eligible for placements</th><th className="px-4 py-3 text-right">Details</th></tr></thead>
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Student</th><th className="px-4 py-3">IITG webmail</th><th className="px-4 py-3">Roll number</th><th className="px-4 py-3">Programme</th><th className="px-4 py-3">Department</th><th className="px-4 py-3">CPI</th><th className="px-4 py-3">CV / Verification</th><th className="px-4 py-3">Eligible for placements</th><th className="px-4 py-3 text-right">Details</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? <tr><td colSpan={10} className="px-4 py-14 text-center text-slate-500">Loading registered students…</td></tr> : filteredStudents.length === 0 ? <tr><td colSpan={10} className="px-4 py-14 text-center text-slate-500">No students match this search.</td></tr> : filteredStudents.map((student, index) => {
                   const uploaded = [student.cv?.cv1, student.cv?.cv2].filter(Boolean).length;
-                  return <tr key={student.roll_number} className="hover:bg-slate-50"><td className="px-4 py-3 text-slate-500">{index + 1}</td><td className="px-4 py-3 font-semibold text-slate-800">{student.name}</td><td className="px-4 py-3 text-slate-600">{student.email}</td><td className="px-4 py-3 font-mono text-slate-700">{student.roll_number}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_programme || '—'}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_discipline || '—'}</td><td className="px-4 py-3 font-semibold text-slate-700">{student.major_cpi ?? '—'}</td><td className="px-4 py-3"><span className="font-medium text-slate-700">{uploaded}/2 uploaded</span><span className={`ml-2 rounded px-2 py-0.5 text-xs font-semibold ${student.cv_verified ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{student.cv_verified ? 'Verified' : 'Pending'}</span></td><td className="px-4 py-3"><label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700"><input type="checkbox" className="h-4 w-4 accent-[#1b2a4a]" checked={student.is_eligible_for_placement !== false} disabled={savingRoll === student.roll_number} onChange={() => togglePlacement(student)} aria-label={`${student.name} is eligible for placements`} />{student.is_eligible_for_placement !== false ? 'Placement' : 'Internship only'}</label></td><td className="px-4 py-3 text-right"><Link href={`/students/${student.roll_number}`} className="inline-flex rounded-md bg-[#1b2a4a] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#263b60]">Details</Link></td></tr>;
+                  return <tr key={student.roll_number} className="hover:bg-slate-50"><td className="px-4 py-3 text-slate-500">{(page - 1) * PAGE_SIZE + index + 1}</td><td className="px-4 py-3 font-semibold text-slate-800">{student.name}</td><td className="px-4 py-3 text-slate-600">{student.email}</td><td className="px-4 py-3 font-mono text-slate-700">{student.roll_number}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_programme || '—'}</td><td className="px-4 py-3 text-slate-700">{student.academic_details?.major_department || '—'}</td><td className="px-4 py-3 font-semibold text-slate-700">{student.major_cpi ?? '—'}</td><td className="px-4 py-3"><span className="font-medium text-slate-700">{uploaded}/2 uploaded</span><span className={`ml-2 rounded px-2 py-0.5 text-xs font-semibold ${student.cv_verified ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{student.cv_verified ? 'Verified' : 'Pending'}</span></td><td className="px-4 py-3"><label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700"><input type="checkbox" className="h-4 w-4 accent-[#1b2a4a]" checked={student.is_eligible_for_placement !== false} disabled={savingRoll === student.roll_number} onChange={() => togglePlacement(student)} aria-label={`${student.name} is eligible for placements`} />{student.is_eligible_for_placement !== false ? 'Placement' : 'Internship only'}</label></td><td className="px-4 py-3 text-right"><Link href={`/students/${student.roll_number}`} className="inline-flex rounded-md bg-[#1b2a4a] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#263b60]">Details</Link></td></tr>;
                 })}
               </tbody>
             </table>
           </div>
         )}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 p-4 text-sm text-slate-600">
+          <span>{total === 0 ? 'No scholars' : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}`}</span>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => goTo(1)} disabled={page <= 1 || loading} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-40">First</button>
+            <button type="button" onClick={() => goTo(page - 1)} disabled={page <= 1 || loading} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-40">Previous</button>
+            <span className="px-1 text-xs font-medium">Page {page} of {pageCount}</span>
+            <button type="button" onClick={() => goTo(page + 1)} disabled={page >= pageCount || loading} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-40">Next</button>
+            <button type="button" onClick={() => goTo(pageCount)} disabled={page >= pageCount || loading} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-40">Last</button>
+          </div>
+        </div>
       </section>
     </DashboardLayout>
   );
