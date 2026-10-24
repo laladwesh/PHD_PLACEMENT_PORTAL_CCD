@@ -566,33 +566,6 @@ export default function DashboardPage() {
               })()}
             </div>
 
-            {/* Placement Policy & Rules Card */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5 shadow-xs">
-              <h3 className="text-sm font-bold text-gray-900 tracking-tight mb-2">Key Placement Guidelines</h3>
-              <ul className="space-y-2 text-xs text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#1B2A4A] font-bold">&bull;</span>
-                  <span><strong>One-Offer Policy:</strong> Upon formal acceptance of any job offer, candidate portal access is automatically frozen.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#1B2A4A] font-bold">&bull;</span>
-                  <span><strong>NOC Clearance:</strong> Supervisor recommendation required before final interview rounds.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#1B2A4A] font-bold">&bull;</span>
-                  <span><strong>PPT Attendance:</strong> Attendance in pre-placement presentations is mandatory for registered applicants.</span>
-                </li>
-              </ul>
-              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                <Link href="/policy" className="text-[#1B2A4A] hover:underline font-semibold">
-                  Read Full Placement Policy &rarr;
-                </Link>
-                <Link href="/offers" className="text-gray-500 hover:text-gray-800 font-medium">
-                  My Offers
-                </Link>
-              </div>
-            </div>
-
             {/* CCD Helpdesk Card */}
             <div className="bg-gradient-to-br from-slate-50 to-slate-100/70 rounded-lg border border-gray-200 p-4 text-xs text-gray-600">
               <p className="font-bold text-gray-900 mb-1">Centre for Career Development</p>
