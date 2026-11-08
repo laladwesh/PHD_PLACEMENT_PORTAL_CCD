@@ -36,7 +36,7 @@ function SignInCard() {
       return;
     }
 
-    if (trimmedEmail.endsWith('@iitg.ac.in')) {
+    if (trimmedEmail.endsWith('@iitg.ac.in') || trimmedEmail.endsWith('@alumni.iitg.ac.in')) {
       toast.info('IIT Guwahati students and coordinators must use the Microsoft account sign-in button above.');
       return;
     }

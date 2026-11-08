@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     // Direct bypass prevention: IITG scholars and coordinators MUST use Azure SSO
-    if (email.endsWith('@iitg.ac.in') || requestedRole === 'student' || requestedRole === 'coordinator') {
+    if (email.endsWith('@iitg.ac.in') || email.endsWith('@alumni.iitg.ac.in') || requestedRole === 'student' || requestedRole === 'coordinator') {
       return NextResponse.json({
         error: 'IIT Guwahati students and coordinators must sign in via the Microsoft Azure Single Sign-On button.',
       }, { status: 400 });
