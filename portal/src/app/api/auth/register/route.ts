@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (normalizedEmail.endsWith('@iitg.ac.in') || normalizedEmail.endsWith('@alumni.iitg.ac.in')) {
+    if (normalizedEmail.endsWith('@iitg.ac.in')) {
       return NextResponse.json({
         error: 'IIT Guwahati email addresses (@iitg.ac.in) cannot be registered as corporate recruiter accounts.',
       }, { status: 400 });

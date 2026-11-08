@@ -36,19 +36,17 @@ export async function GET(request: NextRequest) {
 
     // Official Microsoft ID token validation
     const claims = await validateIdToken(await exchangeAuthorizationCode(code, oauth.verifier), oauth.nonce);
-    const isIitgAccount = (value: string) => value.endsWith('@iitg.ac.in') || value.endsWith('@alumni.iitg.ac.in');
+    const isIitgAccount = (value: string) => value.endsWith('@iitg.ac.in');
     // preferred_username is the sign-in name Microsoft verified. The `email` claim is only used as a
     // fallback for IIT Guwahati accounts; it is never trusted for accounts from other domains.
     const verifiedName = (claims.preferred_username || '').trim().toLowerCase();
     const email = verifiedName || (claims.email || '').trim().toLowerCase();
     let name = claims.name || email.split('@')[0];
     const iitg = isIitgAccount(email);
-    const isStaffAddress = email.endsWith('@iitg.ac.in');   // alumni addresses are for students only
 
     if (!email) return fail('Your Microsoft account did not return an email address.');
     // @iitg.ac.in addresses are only valid when the token really comes from the IIT Guwahati tenant.
-    // (an alumni address may sit in another allow-listed tenant; the token's tenant was already checked against that list)
-    if (isStaffAddress && (claims.tid || '').toLowerCase() !== iitgTenantId()) {
+    if (iitg && (claims.tid || '').toLowerCase() !== iitgTenantId()) {
       return fail('Only official @iitg.ac.in Microsoft accounts are permitted.');
     }
     if (!iitg && !verifiedName) return fail('Your Microsoft account could not be verified.');
@@ -63,7 +61,7 @@ export async function GET(request: NextRequest) {
       user?.role === 'coordinator' ||
       Boolean(admin) ||
       bootstrapCoordinators.includes(email) ||
-      (isStaffAddress && email.startsWith('placement'));
+      (iitg && email.startsWith('placement'));
 
     // Students must be IIT Guwahati accounts; any other domain needs a coordinator registration.
     if (!iitg && !isCoordinator) {
